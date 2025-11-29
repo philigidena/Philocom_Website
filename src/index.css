@@ -1,0 +1,202 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: dark;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: #020408;
+  color: #ffffff;
+  overflow-x: hidden;
+}
+
+#root {
+  width: 100%;
+  min-height: 100vh;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0a1628;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1890ff;
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #40a9ff;
+}
+
+/* Glass morphism utility */
+.glass {
+  background: rgba(10, 22, 40, 0.7);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, #22d3ee, #1890ff, #a855f7);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Animated gradient background */
+.animated-gradient {
+  background: linear-gradient(-45deg,
+      #020408,
+      #0a1628,
+      #003a8c,
+      #0a1628);
+  background-size: 400% 400%;
+  animation: gradientShift 15s ease infinite;
+}
+
+@keyframes gradientShift {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* Network animation background */
+.network-bg {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  overflow: hidden;
+  z-index: 0;
+}
+
+.network-bg::before {
+  content: '';
+  position: absolute;
+  width: 200%;
+  height: 200%;
+  top: -50%;
+  left: -50%;
+  background-image:
+    linear-gradient(90deg, rgba(24, 144, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(24, 144, 255, 0.03) 1px, transparent 1px);
+  background-size: 50px 50px;
+  animation: networkMove 20s linear infinite;
+}
+
+@keyframes networkMove {
+  0% {
+    transform: translate(0, 0);
+  }
+
+  100% {
+    transform: translate(50px, 50px);
+  }
+}
+
+@keyframes grid-move {
+  0% {
+    transform: translate(0, 0);
+  }
+
+  100% {
+    transform: translate(60px, 60px);
+  }
+}
+
+/* Aurora / Fluid Background Effect */
+.aurora-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  background: #000;
+}
+
+.aurora-blob {
+  position: absolute;
+  filter: blur(80px);
+  opacity: 0.4;
+  animation: aurora-float 20s infinite alternate cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%;
+}
+
+.aurora-blob-1 {
+  top: -10%;
+  right: -10%;
+  width: 70vw;
+  height: 70vh;
+  background: radial-gradient(circle at center, rgba(34, 211, 238, 0.3), transparent 70%);
+  animation-duration: 25s;
+}
+
+.aurora-blob-2 {
+  bottom: -20%;
+  left: -10%;
+  width: 60vw;
+  height: 60vh;
+  background: radial-gradient(circle at center, rgba(59, 130, 246, 0.3), transparent 70%);
+  animation-duration: 30s;
+  animation-delay: -5s;
+}
+
+.aurora-blob-3 {
+  top: 40%;
+  left: 30%;
+  width: 50vw;
+  height: 50vh;
+  background: radial-gradient(circle at center, rgba(168, 85, 247, 0.2), transparent 70%);
+  animation-duration: 35s;
+  animation-delay: -10s;
+}
+
+@keyframes aurora-float {
+  0% {
+    transform: translate(0, 0) rotate(0deg) scale(1);
+  }
+
+  33% {
+    transform: translate(5%, 10%) rotate(10deg) scale(1.1);
+  }
+
+  66% {
+    transform: translate(-5%, 5%) rotate(-5deg) scale(0.9);
+  }
+
+  100% {
+    transform: translate(0, 0) rotate(0deg) scale(1);
+  }
+}
