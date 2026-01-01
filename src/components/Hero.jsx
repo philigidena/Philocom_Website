@@ -157,8 +157,8 @@ const Hero = () => {
       <div className="relative z-10 container mx-auto px-6 text-center">
 
         {/* Animated Title */}
-        <div ref={titleRef} className="mb-8 perspective-1000">
-          <h1 className="text-7xl md:text-8xl lg:text-9xl font-black text-white leading-none tracking-tighter">
+        <div ref={titleRef} className="mb-6 md:mb-8 perspective-1000">
+          <h1 className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl xl:text-9xl font-black text-white leading-none tracking-tighter">
             {'PHILOCOM'.split('').map((char, i) => (
               <span
                 key={i}
@@ -174,41 +174,41 @@ const Hero = () => {
         </div>
 
         {/* Animated Subtitle */}
-        <div ref={subtitleRef} className="mb-12">
-          <div className="inline-block px-6 py-3 border border-cyan-500/50 rounded-full backdrop-blur-xl bg-cyan-500/10 mb-6">
-            <span className="text-cyan-400 text-sm font-semibold tracking-widest uppercase">
+        <div ref={subtitleRef} className="mb-8 md:mb-12">
+          <div className="inline-block px-4 py-2 md:px-6 md:py-3 border border-cyan-500/50 rounded-full backdrop-blur-xl bg-cyan-500/10 mb-4 md:mb-6">
+            <span className="text-cyan-400 text-xs md:text-sm font-semibold tracking-widest uppercase">
               Technology & Telecommunication
             </span>
           </div>
-          <p className="text-xl md:text-2xl text-gray-300 max-w-3xl mx-auto leading-relaxed">
+          <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-gray-300 max-w-3xl mx-auto leading-relaxed px-4">
             Empowering businesses through innovative technology solutions
           </p>
         </div>
 
         {/* CTA Buttons */}
-        <div ref={ctaRef} className="flex flex-wrap justify-center gap-6 mb-20">
+        <div ref={ctaRef} className="flex flex-col sm:flex-row flex-wrap justify-center gap-4 md:gap-6 mb-12 md:mb-20 px-4">
           <a
             href="#portfolio"
-            className="cta-float group relative px-10 py-5 bg-gradient-to-r from-cyan-500 via-blue-500 to-cyan-500 bg-size-300 animate-gradient-x text-white font-bold text-lg rounded-full overflow-hidden shadow-lg shadow-cyan-500/50 hover:shadow-cyan-500/80 transition-all hover:scale-105"
+            className="cta-float group relative px-6 py-4 md:px-10 md:py-5 bg-gradient-to-r from-cyan-500 via-blue-500 to-cyan-500 bg-size-300 animate-gradient-x text-white font-bold text-base md:text-lg rounded-full overflow-hidden shadow-lg shadow-cyan-500/50 hover:shadow-cyan-500/80 transition-all hover:scale-105"
           >
-            <span className="relative flex items-center gap-3">
+            <span className="relative flex items-center justify-center gap-2 md:gap-3">
               Explore Our Work
-              <ArrowRight className="w-5 h-5 group-hover:translate-x-2 transition-transform" />
+              <ArrowRight className="w-4 h-4 md:w-5 md:h-5 group-hover:translate-x-2 transition-transform" />
             </span>
           </a>
 
           <a
             href="#contact"
-            className="cta-float group px-10 py-5 bg-white/10 backdrop-blur-xl text-white font-bold text-lg rounded-full border-2 border-white/30 hover:bg-white/20 hover:border-cyan-500/50 transition-all"
+            className="cta-float group px-6 py-4 md:px-10 md:py-5 bg-white/10 backdrop-blur-xl text-white font-bold text-base md:text-lg rounded-full border-2 border-white/30 hover:bg-white/20 hover:border-cyan-500/50 transition-all"
           >
-            <span className="flex items-center gap-3">
+            <span className="flex items-center justify-center gap-2 md:gap-3">
               Start a Project
             </span>
           </a>
         </div>
 
         {/* Stats with glow effect */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-4xl mx-auto">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 max-w-4xl mx-auto px-4">
           {[
             { value: '500+', label: 'Projects' },
             { value: '200+', label: 'Clients' },
@@ -217,12 +217,12 @@ const Hero = () => {
           ].map((stat, i) => (
             <div
               key={i}
-              className="group p-6 bg-white/5 backdrop-blur-xl rounded-2xl border border-white/10 hover:border-cyan-500/50 hover:bg-white/10 transition-all duration-300"
+              className="group p-4 md:p-6 bg-white/5 backdrop-blur-xl rounded-xl md:rounded-2xl border border-white/10 hover:border-cyan-500/50 hover:bg-white/10 transition-all duration-300"
             >
-              <div className="text-4xl font-bold text-white mb-2 group-hover:text-cyan-400 transition-colors">
+              <div className="text-2xl md:text-4xl font-bold text-white mb-1 md:mb-2 group-hover:text-cyan-400 transition-colors">
                 {stat.value}
               </div>
-              <div className="text-sm text-gray-400">{stat.label}</div>
+              <div className="text-xs md:text-sm text-gray-400">{stat.label}</div>
             </div>
           ))}
         </div>

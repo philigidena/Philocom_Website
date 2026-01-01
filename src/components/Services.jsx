@@ -92,18 +92,18 @@ const Services = () => {
     };
 
     return (
-        <section className="py-32 px-6 bg-white relative overflow-hidden">
+        <section className="py-16 md:py-24 lg:py-32 px-4 md:px-6 bg-white relative overflow-hidden">
             <div className="max-w-7xl mx-auto">
 
-                <div className="mb-20">
-                    <div className="flex items-center gap-4 mb-6">
-                        <div className="w-12 h-1 bg-gray-900" />
-                        <span className="text-sm font-semibold text-gray-600 tracking-widest uppercase">Our Expertise</span>
+                <div className="mb-10 md:mb-16 lg:mb-20">
+                    <div className="flex items-center gap-3 md:gap-4 mb-4 md:mb-6">
+                        <div className="w-8 md:w-12 h-1 bg-gray-900" />
+                        <span className="text-xs md:text-sm font-semibold text-gray-600 tracking-widest uppercase">Our Expertise</span>
                     </div>
-                    <h2 className="text-5xl md:text-6xl lg:text-7xl font-bold text-gray-900 mb-4">
+                    <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-gray-900 mb-3 md:mb-4">
                         Comprehensive Solutions
                     </h2>
-                    <p className="text-xl text-gray-600 max-w-2xl">
+                    <p className="text-base md:text-lg lg:text-xl text-gray-600 max-w-2xl">
                         Tailored technology services designed to elevate your business operations
                     </p>
                 </div>
@@ -117,7 +117,7 @@ const Services = () => {
                         >
                             {Array.from({ length: totalPages }).map((_, pageIndex) => (
                                 <div key={pageIndex} className="w-full flex-shrink-0">
-                                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 px-2">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 px-1 md:px-2">
                                         {services
                                             .slice(pageIndex * itemsPerPage, (pageIndex + 1) * itemsPerPage)
                                             .map((service, index) => {
@@ -186,18 +186,18 @@ const Services = () => {
                     {/* Navigation Buttons */}
                     <button
                         onClick={prevSlide}
-                        className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 w-12 h-12 bg-gray-900 text-white rounded-full flex items-center justify-center hover:bg-gray-700 transition-colors shadow-lg z-10"
+                        className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-2 md:-translate-x-4 w-10 h-10 md:w-12 md:h-12 bg-gray-900 text-white rounded-full flex items-center justify-center hover:bg-gray-700 transition-colors shadow-lg z-10"
                         aria-label="Previous slide"
                     >
-                        <ChevronLeft className="w-6 h-6" />
+                        <ChevronLeft className="w-5 h-5 md:w-6 md:h-6" />
                     </button>
 
                     <button
                         onClick={nextSlide}
-                        className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 w-12 h-12 bg-gray-900 text-white rounded-full flex items-center justify-center hover:bg-gray-700 transition-colors shadow-lg z-10"
+                        className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-2 md:translate-x-4 w-10 h-10 md:w-12 md:h-12 bg-gray-900 text-white rounded-full flex items-center justify-center hover:bg-gray-700 transition-colors shadow-lg z-10"
                         aria-label="Next slide"
                     >
-                        <ChevronRight className="w-6 h-6" />
+                        <ChevronRight className="w-5 h-5 md:w-6 md:h-6" />
                     </button>
 
                     {/* Dots Navigation */}
