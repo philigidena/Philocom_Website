@@ -18,19 +18,26 @@ const Navigation = () => {
   }, []);
 
   const navLinks = [
-    { name: 'Home', href: '/#home' },
-    { name: 'About', href: '/#about' },
-    { name: 'Portfolio', href: '/#portfolio' },
-    { name: 'Services', href: '/#services' },
-    { name: 'Team', href: '/#team' },
-    { name: 'Contact', href: '/#contact' },
+    { name: 'Home', href: '/', type: 'link' },
+    { name: 'About', href: '/about', type: 'link' },
+    { name: 'Services', href: '/#services', type: 'hash' },
+    { name: 'Portfolio', href: '/#portfolio', type: 'hash' },
+    { name: 'Careers', href: '/careers', type: 'link' },
+    { name: 'Contact', href: '/#contact', type: 'hash' },
   ];
 
-  const handleNavClick = (e, href) => {
-    e.preventDefault();
+  const handleNavClick = (e, link) => {
     setIsMobileMenuOpen(false);
 
-    // Check if it's a hash link
+    if (link.type === 'link') {
+      // Regular page link - let React Router handle it
+      return;
+    }
+
+    // Hash link handling
+    e.preventDefault();
+    const href = link.href;
+
     if (href.includes('#')) {
       const [path, hash] = href.split('#');
 
@@ -72,13 +79,13 @@ const Navigation = () => {
       <nav
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
           isScrolled
-            ? 'bg-[#030305]/80 backdrop-blur-2xl border-b border-white/10 py-3 md:py-4'
-            : 'bg-transparent py-4 md:py-6'
+            ? 'bg-[#030305]/80 backdrop-blur-2xl border-b border-white/10 py-2 md:py-3'
+            : 'bg-transparent py-3 md:py-5'
         }`}
       >
         <div className="container mx-auto px-4 md:px-6">
           <div className="flex items-center justify-between">
-            {/* Logo */}
+            {/* Logo - Made Bigger */}
             <Link
               to="/"
               className="flex items-center group"
@@ -86,22 +93,34 @@ const Navigation = () => {
               <img
                 src="/philocom_logo_white.png"
                 alt="Philocom Logo"
-                className="h-8 md:h-10 lg:h-12 w-auto group-hover:scale-105 transition-transform duration-300"
+                className="h-12 md:h-14 lg:h-16 w-auto group-hover:scale-105 transition-transform duration-300"
               />
             </Link>
 
             {/* Desktop Navigation */}
             <div className="hidden lg:flex items-center gap-6 xl:gap-8">
               {navLinks.map((link, index) => (
-                <a
-                  key={index}
-                  href={link.href}
-                  onClick={(e) => handleNavClick(e, link.href)}
-                  className="relative text-gray-300 hover:text-white text-sm font-medium tracking-wide transition-colors duration-300 group"
-                >
-                  {link.name}
-                  <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-cyan-400 to-blue-500 group-hover:w-full transition-all duration-300"></span>
-                </a>
+                link.type === 'link' ? (
+                  <Link
+                    key={index}
+                    to={link.href}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="relative text-gray-300 hover:text-white text-sm font-medium tracking-wide transition-colors duration-300 group"
+                  >
+                    {link.name}
+                    <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-cyan-400 to-blue-500 group-hover:w-full transition-all duration-300"></span>
+                  </Link>
+                ) : (
+                  <a
+                    key={index}
+                    href={link.href}
+                    onClick={(e) => handleNavClick(e, link)}
+                    className="relative text-gray-300 hover:text-white text-sm font-medium tracking-wide transition-colors duration-300 group"
+                  >
+                    {link.name}
+                    <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-cyan-400 to-blue-500 group-hover:w-full transition-all duration-300"></span>
+                  </a>
+                )
               ))}
             </div>
 
@@ -109,7 +128,7 @@ const Navigation = () => {
             <div className="hidden lg:flex items-center gap-4">
               <a
                 href="/#contact"
-                onClick={(e) => handleNavClick(e, '/#contact')}
+                onClick={(e) => handleNavClick(e, { href: '/#contact', type: 'hash' })}
                 className="px-5 py-2 xl:px-6 xl:py-2.5 bg-gradient-to-r from-cyan-500 to-blue-500 text-white text-sm font-semibold rounded-full hover:shadow-lg hover:shadow-cyan-500/50 transition-all duration-300 hover:scale-105"
               >
                 Get Started
@@ -150,19 +169,30 @@ const Navigation = () => {
         >
           <div className="flex flex-col gap-4 md:gap-6 mt-16 md:mt-20">
             {navLinks.map((link, index) => (
-              <a
-                key={index}
-                href={link.href}
-                onClick={(e) => handleNavClick(e, link.href)}
-                className="text-xl md:text-2xl font-semibold text-gray-300 hover:text-white hover:translate-x-2 transition-all duration-300"
-              >
-                {link.name}
-              </a>
+              link.type === 'link' ? (
+                <Link
+                  key={index}
+                  to={link.href}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="text-xl md:text-2xl font-semibold text-gray-300 hover:text-white hover:translate-x-2 transition-all duration-300"
+                >
+                  {link.name}
+                </Link>
+              ) : (
+                <a
+                  key={index}
+                  href={link.href}
+                  onClick={(e) => handleNavClick(e, link)}
+                  className="text-xl md:text-2xl font-semibold text-gray-300 hover:text-white hover:translate-x-2 transition-all duration-300"
+                >
+                  {link.name}
+                </a>
+              )
             ))}
 
             <a
               href="/#contact"
-              onClick={(e) => handleNavClick(e, '/#contact')}
+              onClick={(e) => handleNavClick(e, { href: '/#contact', type: 'hash' })}
               className="mt-6 md:mt-8 px-6 py-3 md:px-8 md:py-4 bg-gradient-to-r from-cyan-500 to-blue-500 text-white text-center text-base md:text-lg font-bold rounded-full hover:shadow-lg hover:shadow-cyan-500/50 transition-all duration-300"
             >
               Get Started
