@@ -1,101 +1,253 @@
 import { useEffect, useRef } from 'react';
 import gsap from 'gsap';
-import { ArrowRight, Globe, Shield } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 
 const Hero = () => {
   const heroRef = useRef();
-  const contentRef = useRef();
+  const titleRef = useRef();
+  const subtitleRef = useRef();
+  const ctaRef = useRef();
 
   useEffect(() => {
-    const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
+    // Create timeline for entrance animations
+    const tl = gsap.timeline({ delay: 0.5 });
 
-    // Initial reveal animation
-    tl.fromTo(contentRef.current.children,
-      { y: 50, opacity: 0 },
-      { y: 0, opacity: 1, duration: 1, stagger: 0.1 }
+    // Animate title - split reveal
+    const titleChars = titleRef.current.querySelectorAll('.char');
+    tl.fromTo(titleChars,
+      {
+        opacity: 0,
+        y: 100,
+        rotationX: -90,
+      },
+      {
+        opacity: 1,
+        y: 0,
+        rotationX: 0,
+        duration: 1,
+        stagger: 0.05,
+        ease: 'back.out(1.7)',
+      }
     );
+
+    // Animate subtitle
+    tl.fromTo(subtitleRef.current,
+      { opacity: 0, y: 30, filter: 'blur(10px)' },
+      { opacity: 1, y: 0, filter: 'blur(0px)', duration: 0.8 },
+      '-=0.5'
+    );
+
+    // Animate CTA
+    tl.fromTo(ctaRef.current.children,
+      { opacity: 0, y: 20, scale: 0.9 },
+      { opacity: 1, y: 0, scale: 1, duration: 0.6, stagger: 0.1 },
+      '-=0.4'
+    );
+
+    // Continuous floating animation for CTA
+    gsap.to('.cta-float', {
+      y: -10,
+      duration: 2,
+      ease: 'sine.inOut',
+      repeat: -1,
+      yoyo: true,
+    });
+
+    // Grid glow animation
+    const gridLines = document.querySelectorAll('.grid-line');
+    gridLines.forEach((line) => {
+      gsap.to(line, {
+        opacity: Math.random() * 0.5 + 0.3,
+        duration: Math.random() * 2 + 1,
+        repeat: -1,
+        yoyo: true,
+        ease: 'sine.inOut',
+        delay: Math.random() * 2,
+      });
+    });
+
   }, []);
 
   return (
     <section
+      id="home"
       ref={heroRef}
-      className="relative min-h-screen flex items-center justify-center overflow-hidden bg-[#030305]"
+      className="relative min-h-screen flex items-center justify-center overflow-hidden bg-black"
     >
-      {/* 1. Dynamic Background Layers (Aurora Effect) */}
-      <div className="aurora-bg">
-        <div className="aurora-blob aurora-blob-1"></div>
-        <div className="aurora-blob aurora-blob-2"></div>
-        <div className="aurora-blob aurora-blob-3"></div>
-
-        {/* Grid Overlay for Texture */}
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:64px_64px] [mask-image:radial-gradient(ellipse_60%_60%_at_50%_50%,#000_70%,transparent_100%)]"></div>
+      {/* Hero Background Image */}
+      <div className="absolute inset-0 opacity-30">
+        <div
+          className="absolute inset-0"
+          style={{
+            backgroundImage: 'url(/Hero-background.png)',
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat',
+          }}
+        />
       </div>
 
-      {/* 2. Main Content Container */}
-      <div className="relative z-10 container mx-auto px-6">
-        <div ref={contentRef} className="flex flex-col items-center text-center max-w-5xl mx-auto">
+      {/* Animated Glowing Grid */}
+      <div className="absolute inset-0 opacity-40">
+        <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <pattern id="grid" width="80" height="80" patternUnits="userSpaceOnUse">
+              <path
+                d="M 80 0 L 0 0 0 80"
+                fill="none"
+                stroke="rgba(34, 211, 238, 0.3)"
+                strokeWidth="1"
+                className="grid-line"
+              />
+            </pattern>
+            <linearGradient id="grid-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="rgba(34, 211, 238, 0.8)" />
+              <stop offset="50%" stopColor="rgba(59, 130, 246, 0.6)" />
+              <stop offset="100%" stopColor="rgba(168, 85, 247, 0.4)" />
+            </linearGradient>
+            <filter id="glow">
+              <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+              <feMerge>
+                <feMergeNode in="coloredBlur"/>
+                <feMergeNode in="SourceGraphic"/>
+              </feMerge>
+            </filter>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#grid)" />
 
-          {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 backdrop-blur-md mb-8 hover:bg-white/10 transition-colors cursor-default">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500"></span>
-            </span>
-            <span className="text-sm font-medium text-cyan-300 tracking-wider uppercase">Future of Connectivity</span>
-          </div>
+          {/* Glowing accent lines */}
+          {[...Array(6)].map((_, i) => (
+            <line
+              key={i}
+              x1={`${(i + 1) * 15}%`}
+              y1="0%"
+              x2={`${(i + 1) * 15}%`}
+              y2="100%"
+              stroke="url(#grid-gradient)"
+              strokeWidth="2"
+              className="grid-line"
+              filter="url(#glow)"
+              opacity="0.3"
+            />
+          ))}
 
-          {/* Main Title - PURE WHITE & HUGE */}
-          <h1 className="text-7xl md:text-8xl lg:text-9xl font-bold tracking-tight text-white mb-6 leading-[0.9]">
-            PHILO<span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">COM</span>
-          </h1>
+          {/* Horizontal glowing lines */}
+          {[...Array(4)].map((_, i) => (
+            <line
+              key={`h-${i}`}
+              x1="0%"
+              y1={`${(i + 1) * 20}%`}
+              x2="100%"
+              y2={`${(i + 1) * 20}%`}
+              stroke="url(#grid-gradient)"
+              strokeWidth="2"
+              className="grid-line"
+              filter="url(#glow)"
+              opacity="0.2"
+            />
+          ))}
+        </svg>
+      </div>
 
-          <p className="text-2xl md:text-3xl font-light text-gray-300 mb-10 tracking-wide">
-            Technology & Telecommunication
-          </p>
+      {/* Glowing orbs */}
+      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-cyan-500/20 rounded-full blur-3xl animate-pulse" />
+      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl animate-pulse delay-1000" />
 
-          {/* Description - High Contrast */}
-          <p className="text-lg md:text-xl text-gray-400 max-w-2xl mx-auto mb-12 leading-relaxed">
-            We engineer robust <span className="text-white font-semibold">IoT ecosystems</span>,
-            fortify businesses with <span className="text-white font-semibold">cybersecurity</span>,
-            and drive global <span className="text-white font-semibold">digital transformation</span>.
-          </p>
+      {/* Main Content */}
+      <div className="relative z-10 container mx-auto px-6 text-center">
 
-          {/* CTA Buttons */}
-          <div className="flex flex-wrap justify-center gap-6">
-            <button className="group relative px-8 py-4 bg-white text-black font-bold rounded-full overflow-hidden transition-all hover:scale-105">
-              <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-cyan-300 to-blue-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-              <span className="relative flex items-center gap-2 group-hover:text-white transition-colors">
-                Explore Solutions <ArrowRight className="w-5 h-5" />
+        {/* Animated Title */}
+        <div ref={titleRef} className="mb-8 perspective-1000">
+          <h1 className="text-7xl md:text-8xl lg:text-9xl font-black text-white leading-none tracking-tighter">
+            {'PHILOCOM'.split('').map((char, i) => (
+              <span
+                key={i}
+                className="char inline-block"
+                style={{
+                  textShadow: '0 0 40px rgba(34, 211, 238, 0.5), 0 0 80px rgba(34, 211, 238, 0.3)',
+                }}
+              >
+                {char}
               </span>
-            </button>
+            ))}
+          </h1>
+        </div>
 
-            <button className="px-8 py-4 bg-white/5 text-white font-medium rounded-full border border-white/10 backdrop-blur-sm hover:bg-white/10 transition-all">
-              Contact Us
-            </button>
+        {/* Animated Subtitle */}
+        <div ref={subtitleRef} className="mb-12">
+          <div className="inline-block px-6 py-3 border border-cyan-500/50 rounded-full backdrop-blur-xl bg-cyan-500/10 mb-6">
+            <span className="text-cyan-400 text-sm font-semibold tracking-widest uppercase">
+              Technology & Telecommunication
+            </span>
           </div>
+          <p className="text-xl md:text-2xl text-gray-300 max-w-3xl mx-auto leading-relaxed">
+            Empowering businesses through innovative technology solutions
+          </p>
+        </div>
 
-          {/* Floating Glass Cards (Decorative) */}
-          <div className="absolute top-1/2 -translate-y-1/2 left-0 hidden xl:block -translate-x-20">
-            <div className="p-6 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md w-64 transform -rotate-6 hover:rotate-0 transition-transform duration-500">
-              <Globe className="w-8 h-8 text-cyan-400 mb-4" />
-              <div className="text-2xl font-bold text-white mb-1">100+</div>
-              <div className="text-sm text-gray-400">Global Projects Delivered</div>
+        {/* CTA Buttons */}
+        <div ref={ctaRef} className="flex flex-wrap justify-center gap-6 mb-20">
+          <a
+            href="#portfolio"
+            className="cta-float group relative px-10 py-5 bg-gradient-to-r from-cyan-500 via-blue-500 to-cyan-500 bg-size-300 animate-gradient-x text-white font-bold text-lg rounded-full overflow-hidden shadow-lg shadow-cyan-500/50 hover:shadow-cyan-500/80 transition-all hover:scale-105"
+          >
+            <span className="relative flex items-center gap-3">
+              Explore Our Work
+              <ArrowRight className="w-5 h-5 group-hover:translate-x-2 transition-transform" />
+            </span>
+          </a>
+
+          <a
+            href="#contact"
+            className="cta-float group px-10 py-5 bg-white/10 backdrop-blur-xl text-white font-bold text-lg rounded-full border-2 border-white/30 hover:bg-white/20 hover:border-cyan-500/50 transition-all"
+          >
+            <span className="flex items-center gap-3">
+              Start a Project
+            </span>
+          </a>
+        </div>
+
+        {/* Stats with glow effect */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-4xl mx-auto">
+          {[
+            { value: '500+', label: 'Projects' },
+            { value: '200+', label: 'Clients' },
+            { value: '98%', label: 'Satisfaction' },
+            { value: '45+', label: 'Countries' },
+          ].map((stat, i) => (
+            <div
+              key={i}
+              className="group p-6 bg-white/5 backdrop-blur-xl rounded-2xl border border-white/10 hover:border-cyan-500/50 hover:bg-white/10 transition-all duration-300"
+            >
+              <div className="text-4xl font-bold text-white mb-2 group-hover:text-cyan-400 transition-colors">
+                {stat.value}
+              </div>
+              <div className="text-sm text-gray-400">{stat.label}</div>
             </div>
-          </div>
+          ))}
+        </div>
 
-          <div className="absolute top-1/2 -translate-y-1/2 right-0 hidden xl:block translate-x-20">
-            <div className="p-6 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md w-64 transform rotate-6 hover:rotate-0 transition-transform duration-500">
-              <Shield className="w-8 h-8 text-blue-400 mb-4" />
-              <div className="text-2xl font-bold text-white mb-1">24/7</div>
-              <div className="text-sm text-gray-400">Secure Support System</div>
-            </div>
-          </div>
+      </div>
 
+      {/* Scroll Indicator */}
+      <div className="absolute bottom-10 left-1/2 -translate-x-1/2 animate-bounce">
+        <div className="w-6 h-10 border-2 border-cyan-500/50 rounded-full flex items-start justify-center p-2">
+          <div className="w-1.5 h-3 bg-cyan-500 rounded-full animate-pulse" />
         </div>
       </div>
 
-      {/* Bottom Fade */}
-      <div className="absolute bottom-0 left-0 w-full h-32 bg-gradient-to-t from-[#030305] to-transparent z-10"></div>
+      {/* Add custom styles for animations */}
+      <style jsx>{`
+        .perspective-1000 {
+          perspective: 1000px;
+        }
+        .delay-1000 {
+          animation-delay: 1s;
+        }
+        .bg-size-300 {
+          background-size: 300%;
+        }
+      `}</style>
     </section>
   );
 };

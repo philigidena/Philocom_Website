@@ -48,7 +48,7 @@ const Contact = () => {
         {
             icon: MapPin,
             title: 'Office Location',
-            details: ['Grace Plaza, 3rd Floor', 'Namibia St., Addis Ababa', 'Ethiopia'],
+            details: ['Nile Source Building, 5th Floor', 'Africa AV / Bole Road', 'Addis Ababa, Ethiopia'],
             gradient: 'from-cyan-400 to-blue-600',
         },
         {

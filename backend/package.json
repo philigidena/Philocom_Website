@@ -1,0 +1,26 @@
+{
+  "name": "philocom-backend",
+  "version": "1.0.0",
+  "description": "Philocom Portfolio Backend - AWS Lambda Functions",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.js",
+    "deploy": "npm run build && cd ../terraform && terraform apply -auto-approve",
+    "test": "echo \"Tests coming soon\"",
+    "lint": "eslint src"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.665.0",
+    "@aws-sdk/client-ses": "^3.665.0",
+    "@aws-sdk/lib-dynamodb": "^3.665.0",
+    "uuid": "^10.0.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.0",
+    "eslint": "^9.16.0"
+  },
+  "keywords": ["aws", "lambda", "serverless", "portfolio"],
+  "author": "Philocom Technology",
+  "license": "MIT"
+}

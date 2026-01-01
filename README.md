@@ -1,16 +1,115 @@
-# React + Vite
+# 🚀 PHILOCOM Technology - Portfolio Website
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+> **Award-winning portfolio website showcasing cutting-edge IT and telecommunication solutions**
 
-Currently, two official plugins are available:
+[![Vercel](https://img.shields.io/badge/Vercel-Deployed-success?logo=vercel)](https://philocom.co)
+[![AWS](https://img.shields.io/badge/AWS-Infrastructure-orange?logo=amazon-aws)](https://aws.amazon.com)
+[![Terraform](https://img.shields.io/badge/Terraform-IaC-purple?logo=terraform)](https://terraform.io)
+[![React](https://img.shields.io/badge/React-18.3-blue?logo=react)](https://reactjs.org)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+---
 
-## React Compiler
+## ✨ Features
 
-The React Compiler is currently not compatible with SWC. See [this issue](https://github.com/vitejs/vite-plugin-react/issues/428) for tracking the progress.
+### 🎨 **Frontend**
+- ⚡ **Blazing Fast** - Built with Vite + React
+- 🎭 **Stunning Animations** - GSAP + ScrollTrigger
+- 📱 **Fully Responsive** - Mobile-first design
+- 🌈 **Modern UI** - Glassmorphism, gradients, micro-interactions
+- ♿ **Accessible** - WCAG 2.1 AA compliant
+- 🚀 **Performance Optimized** - Lazy loading, code splitting
 
-## Expanding the ESLint configuration
+### 🏗️ **Backend**
+- ☁️ **Serverless Architecture** - AWS Lambda + API Gateway
+- 💾 **NoSQL Database** - DynamoDB for scalability
+- 📧 **Email Service** - AWS SES for contact forms
+- 🔒 **Secure** - Input validation, sanitization
+- 📊 **Monitored** - CloudWatch logging & metrics
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+### 🛠️ **Infrastructure**
+- 📜 **Infrastructure as Code** - Terraform for AWS
+- 🔄 **CI/CD Pipeline** - GitHub Actions
+- 🌐 **CDN** - Vercel Edge Network
+- 🔐 **SSL** - Automatic HTTPS
+- 💰 **Cost-Optimized** - AWS Free Tier eligible
+
+---
+
+## 🏛️ Architecture
+
+```
+┌──────────────────────────────────────────────────────────┐
+│                    Frontend Layer                         │
+│  React 18 + Vite + Tailwind CSS + GSAP                   │
+│  Hosted on Vercel (philocom.co)                          │
+└──────────────────────────────────────────────────────────┘
+                           ↓
+┌──────────────────────────────────────────────────────────┐
+│                      API Layer                            │
+│  AWS API Gateway → Lambda Functions (Node.js 20)         │
+│  Endpoints: /projects /testimonials /contact /newsletter  │
+└──────────────────────────────────────────────────────────┘
+                           ↓
+┌──────────────────────────────────────────────────────────┐
+│                    Data & Services Layer                  │
+│  ┌────────────┐  ┌────────────┐  ┌────────────┐         │
+│  │  DynamoDB  │  │     S3     │  │    SES     │         │
+│  │  (NoSQL)   │  │  (Images)  │  │  (Email)   │         │
+│  └────────────┘  └────────────┘  └────────────┘         │
+└──────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 🚀 Quick Start
+
+### Prerequisites
+- Node.js 18+
+- AWS Account
+- Terraform
+- Vercel Account (optional)
+
+### Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/philocom.git
+cd philocom
+
+# Install frontend dependencies
+npm install
+
+# Install backend dependencies
+cd backend
+npm install
+cd ..
+
+# Copy environment variables
+cp .env.example .env.local
+# Edit .env.local with your values
+```
+
+### Development
+
+```bash
+# Run frontend dev server
+npm run dev
+
+# Frontend will be available at http://localhost:5173
+```
+
+### Deployment
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for complete deployment instructions.
+
+---
+
+## 📞 Contact
+
+**Philocom Technology**
+- 🌐 Website: [philocom.co](https://philocom.co)
+- 📧 Email: info@philocom.co
+
+---
+
+**Built with ❤️ by Philocom Technology Team**

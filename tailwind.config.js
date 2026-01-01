@@ -38,6 +38,7 @@ export default {
                 'float': 'float 3s ease-in-out infinite',
                 'glow': 'glow 2s ease-in-out infinite alternate',
                 'slide-up': 'slideUp 0.5s ease-out',
+                'gradient-x': 'gradient-x 15s ease infinite',
             },
             keyframes: {
                 float: {
@@ -52,6 +53,13 @@ export default {
                     '0%': { opacity: '0', transform: 'translateY(30px)' },
                     '100%': { opacity: '1', transform: 'translateY(0)' },
                 },
+                'gradient-x': {
+                    '0%, 100%': { backgroundPosition: '0% 50%' },
+                    '50%': { backgroundPosition: '100% 50%' },
+                },
+            },
+            backgroundSize: {
+                '300%': '300%',
             },
         },
     },
