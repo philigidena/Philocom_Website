@@ -1,228 +1,139 @@
 import { useEffect, useRef } from 'react';
 import gsap from 'gsap';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, ArrowDown } from 'lucide-react';
 
 const Hero = () => {
   const heroRef = useRef();
   const titleRef = useRef();
   const subtitleRef = useRef();
   const ctaRef = useRef();
+  const statsRef = useRef();
 
   useEffect(() => {
-    // Create timeline for entrance animations
-    const tl = gsap.timeline({ delay: 0.5 });
+    const tl = gsap.timeline({ delay: 0.3 });
 
-    // Animate title - split reveal
-    const titleChars = titleRef.current.querySelectorAll('.char');
-    tl.fromTo(titleChars,
-      {
-        opacity: 0,
-        y: 100,
-        rotationX: -90,
-      },
-      {
-        opacity: 1,
-        y: 0,
-        rotationX: 0,
-        duration: 1,
-        stagger: 0.05,
-        ease: 'back.out(1.7)',
-      }
+    // Animate the line
+    tl.fromTo('.hero-line',
+      { scaleX: 0 },
+      { scaleX: 1, duration: 1.2, ease: 'power3.out' }
+    );
+
+    // Animate title words
+    tl.fromTo('.title-word',
+      { opacity: 0, y: 60 },
+      { opacity: 1, y: 0, duration: 0.8, stagger: 0.1, ease: 'power3.out' },
+      '-=0.8'
     );
 
     // Animate subtitle
     tl.fromTo(subtitleRef.current,
-      { opacity: 0, y: 30, filter: 'blur(10px)' },
-      { opacity: 1, y: 0, filter: 'blur(0px)', duration: 0.8 },
-      '-=0.5'
+      { opacity: 0, y: 20 },
+      { opacity: 1, y: 0, duration: 0.6 },
+      '-=0.4'
     );
 
     // Animate CTA
     tl.fromTo(ctaRef.current.children,
-      { opacity: 0, y: 20, scale: 0.9 },
-      { opacity: 1, y: 0, scale: 1, duration: 0.6, stagger: 0.1 },
-      '-=0.4'
+      { opacity: 0, y: 20 },
+      { opacity: 1, y: 0, duration: 0.5, stagger: 0.1 },
+      '-=0.3'
     );
 
-    // Continuous floating animation for CTA
-    gsap.to('.cta-float', {
-      y: -10,
-      duration: 2,
-      ease: 'sine.inOut',
-      repeat: -1,
-      yoyo: true,
-    });
-
-    // Grid glow animation
-    const gridLines = document.querySelectorAll('.grid-line');
-    gridLines.forEach((line) => {
-      gsap.to(line, {
-        opacity: Math.random() * 0.5 + 0.3,
-        duration: Math.random() * 2 + 1,
-        repeat: -1,
-        yoyo: true,
-        ease: 'sine.inOut',
-        delay: Math.random() * 2,
-      });
-    });
+    // Animate stats
+    tl.fromTo('.stat-item',
+      { opacity: 0, y: 30 },
+      { opacity: 1, y: 0, duration: 0.5, stagger: 0.1 },
+      '-=0.2'
+    );
 
   }, []);
+
+  const scrollToContent = () => {
+    const element = document.getElementById('stats');
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
 
   return (
     <section
       id="home"
       ref={heroRef}
-      className="relative min-h-screen flex items-center justify-center overflow-hidden bg-black"
+      className="relative min-h-screen flex items-center justify-center overflow-hidden bg-[#030305]"
     >
-      {/* Hero Background Image */}
-      <div className="absolute inset-0 opacity-30">
-        <div
-          className="absolute inset-0"
-          style={{
-            backgroundImage: 'url(/Hero-background.png)',
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-            backgroundRepeat: 'no-repeat',
-          }}
-        />
-      </div>
+      {/* Subtle grain texture */}
+      <div
+        className="absolute inset-0 opacity-[0.015]"
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`,
+        }}
+      />
 
-      {/* Animated Glowing Grid */}
-      <div className="absolute inset-0 opacity-40">
-        <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
-          <defs>
-            <pattern id="grid" width="80" height="80" patternUnits="userSpaceOnUse">
-              <path
-                d="M 80 0 L 0 0 0 80"
-                fill="none"
-                stroke="rgba(34, 211, 238, 0.3)"
-                strokeWidth="1"
-                className="grid-line"
-              />
-            </pattern>
-            <linearGradient id="grid-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="rgba(34, 211, 238, 0.8)" />
-              <stop offset="50%" stopColor="rgba(59, 130, 246, 0.6)" />
-              <stop offset="100%" stopColor="rgba(168, 85, 247, 0.4)" />
-            </linearGradient>
-            <filter id="glow">
-              <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
-              <feMerge>
-                <feMergeNode in="coloredBlur"/>
-                <feMergeNode in="SourceGraphic"/>
-              </feMerge>
-            </filter>
-          </defs>
-          <rect width="100%" height="100%" fill="url(#grid)" />
-
-          {/* Glowing accent lines */}
-          {[...Array(6)].map((_, i) => (
-            <line
-              key={i}
-              x1={`${(i + 1) * 15}%`}
-              y1="0%"
-              x2={`${(i + 1) * 15}%`}
-              y2="100%"
-              stroke="url(#grid-gradient)"
-              strokeWidth="2"
-              className="grid-line"
-              filter="url(#glow)"
-              opacity="0.3"
-            />
-          ))}
-
-          {/* Horizontal glowing lines */}
-          {[...Array(4)].map((_, i) => (
-            <line
-              key={`h-${i}`}
-              x1="0%"
-              y1={`${(i + 1) * 20}%`}
-              x2="100%"
-              y2={`${(i + 1) * 20}%`}
-              stroke="url(#grid-gradient)"
-              strokeWidth="2"
-              className="grid-line"
-              filter="url(#glow)"
-              opacity="0.2"
-            />
-          ))}
-        </svg>
-      </div>
-
-      {/* Glowing orbs */}
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-cyan-500/20 rounded-full blur-3xl animate-pulse" />
-      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl animate-pulse delay-1000" />
+      {/* Minimal gradient accent */}
+      <div className="absolute top-0 right-0 w-1/2 h-1/2 bg-gradient-to-bl from-cyan-500/5 via-transparent to-transparent" />
+      <div className="absolute bottom-0 left-0 w-1/3 h-1/3 bg-gradient-to-tr from-blue-500/5 via-transparent to-transparent" />
 
       {/* Main Content */}
-      <div className="relative z-10 container mx-auto px-6 text-center">
+      <div className="relative z-10 w-full max-w-7xl mx-auto px-6 md:px-12 lg:px-16">
 
-        {/* Animated Title */}
-        <div ref={titleRef} className="mb-6 md:mb-8 perspective-1000">
-          <h1 className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl xl:text-9xl font-black text-white leading-none tracking-tighter">
-            {'PHILOCOM'.split('').map((char, i) => (
-              <span
-                key={i}
-                className="char inline-block"
-                style={{
-                  textShadow: '0 0 40px rgba(34, 211, 238, 0.5), 0 0 80px rgba(34, 211, 238, 0.3)',
-                }}
-              >
-                {char}
-              </span>
-            ))}
+        {/* Top accent line */}
+        <div className="hero-line w-16 h-[2px] bg-gradient-to-r from-cyan-400 to-blue-500 mb-8 origin-left" />
+
+        {/* Title */}
+        <div ref={titleRef} className="mb-6 md:mb-8">
+          <h1 className="text-[clamp(2.5rem,8vw,7rem)] font-light text-white leading-[0.95] tracking-tight">
+            <span className="title-word block overflow-hidden">
+              <span className="inline-block">Technology</span>
+            </span>
+            <span className="title-word block overflow-hidden">
+              <span className="inline-block text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-400">Solutions</span>
+            </span>
+            <span className="title-word block overflow-hidden text-gray-500 text-[clamp(1.5rem,4vw,3.5rem)]">
+              <span className="inline-block">for Modern Business</span>
+            </span>
           </h1>
         </div>
 
-        {/* Animated Subtitle */}
-        <div ref={subtitleRef} className="mb-8 md:mb-12">
-          <div className="inline-block px-4 py-2 md:px-6 md:py-3 border border-cyan-500/50 rounded-full backdrop-blur-xl bg-cyan-500/10 mb-4 md:mb-6">
-            <span className="text-cyan-400 text-xs md:text-sm font-semibold tracking-widest uppercase">
-              Technology & Telecommunication
-            </span>
-          </div>
-          <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-gray-300 max-w-3xl mx-auto leading-relaxed px-4">
-            Empowering businesses through innovative technology solutions
+        {/* Subtitle */}
+        <div ref={subtitleRef} className="max-w-xl mb-10 md:mb-14">
+          <p className="text-gray-400 text-base md:text-lg leading-relaxed">
+            We craft innovative technology and telecommunication solutions that
+            transform how businesses operate and connect.
           </p>
         </div>
 
         {/* CTA Buttons */}
-        <div ref={ctaRef} className="flex flex-col sm:flex-row flex-wrap justify-center gap-4 md:gap-6 mb-12 md:mb-20 px-4">
+        <div ref={ctaRef} className="flex flex-wrap gap-4 mb-20 md:mb-28">
           <a
             href="#portfolio"
-            className="cta-float group relative px-6 py-4 md:px-10 md:py-5 bg-gradient-to-r from-cyan-500 via-blue-500 to-cyan-500 bg-size-300 animate-gradient-x text-white font-bold text-base md:text-lg rounded-full overflow-hidden shadow-lg shadow-cyan-500/50 hover:shadow-cyan-500/80 transition-all hover:scale-105"
+            className="group flex items-center gap-3 px-6 py-3.5 bg-white text-black font-medium text-sm rounded-full hover:bg-gray-100 transition-all duration-300"
           >
-            <span className="relative flex items-center justify-center gap-2 md:gap-3">
-              Explore Our Work
-              <ArrowRight className="w-4 h-4 md:w-5 md:h-5 group-hover:translate-x-2 transition-transform" />
-            </span>
+            View Our Work
+            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
           </a>
 
           <a
             href="#contact"
-            className="cta-float group px-6 py-4 md:px-10 md:py-5 bg-white/10 backdrop-blur-xl text-white font-bold text-base md:text-lg rounded-full border-2 border-white/30 hover:bg-white/20 hover:border-cyan-500/50 transition-all"
+            className="group flex items-center gap-3 px-6 py-3.5 text-white font-medium text-sm rounded-full border border-white/20 hover:border-white/40 hover:bg-white/5 transition-all duration-300"
           >
-            <span className="flex items-center justify-center gap-2 md:gap-3">
-              Start a Project
-            </span>
+            Get in Touch
           </a>
         </div>
 
-        {/* Stats with glow effect */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 max-w-4xl mx-auto px-4">
+        {/* Minimal Stats */}
+        <div ref={statsRef} className="flex flex-wrap gap-x-12 gap-y-6 md:gap-x-16 lg:gap-x-24">
           {[
-            { value: '500+', label: 'Projects' },
-            { value: '200+', label: 'Clients' },
-            { value: '98%', label: 'Satisfaction' },
-            { value: '45+', label: 'Countries' },
+            { value: '20+', label: 'Projects Delivered' },
+            { value: '15+', label: 'Happy Clients' },
+            { value: '3+', label: 'Countries Served' },
           ].map((stat, i) => (
-            <div
-              key={i}
-              className="group p-4 md:p-6 bg-white/5 backdrop-blur-xl rounded-xl md:rounded-2xl border border-white/10 hover:border-cyan-500/50 hover:bg-white/10 transition-all duration-300"
-            >
-              <div className="text-2xl md:text-4xl font-bold text-white mb-1 md:mb-2 group-hover:text-cyan-400 transition-colors">
+            <div key={i} className="stat-item">
+              <div className="text-3xl md:text-4xl lg:text-5xl font-light text-white mb-1">
                 {stat.value}
               </div>
-              <div className="text-xs md:text-sm text-gray-400">{stat.label}</div>
+              <div className="text-xs md:text-sm text-gray-500 uppercase tracking-wider">
+                {stat.label}
+              </div>
             </div>
           ))}
         </div>
@@ -230,24 +141,25 @@ const Hero = () => {
       </div>
 
       {/* Scroll Indicator */}
-      <div className="absolute bottom-10 left-1/2 -translate-x-1/2 animate-bounce">
-        <div className="w-6 h-10 border-2 border-cyan-500/50 rounded-full flex items-start justify-center p-2">
-          <div className="w-1.5 h-3 bg-cyan-500 rounded-full animate-pulse" />
+      <button
+        onClick={scrollToContent}
+        className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-gray-500 hover:text-white transition-colors cursor-pointer group"
+      >
+        <span className="text-[10px] uppercase tracking-[0.2em]">Scroll</span>
+        <ArrowDown className="w-4 h-4 animate-bounce" />
+      </button>
+
+      {/* Side text decoration */}
+      <div className="hidden lg:block absolute right-8 top-1/2 -translate-y-1/2">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-[1px] h-16 bg-gradient-to-b from-transparent via-gray-700 to-transparent" />
+          <span className="text-[10px] text-gray-600 uppercase tracking-[0.3em] writing-mode-vertical rotate-180" style={{ writingMode: 'vertical-rl' }}>
+            Philocom Technology
+          </span>
+          <div className="w-[1px] h-16 bg-gradient-to-b from-transparent via-gray-700 to-transparent" />
         </div>
       </div>
 
-      {/* Add custom styles for animations */}
-      <style jsx>{`
-        .perspective-1000 {
-          perspective: 1000px;
-        }
-        .delay-1000 {
-          animation-delay: 1s;
-        }
-        .bg-size-300 {
-          background-size: 300%;
-        }
-      `}</style>
     </section>
   );
 };
