@@ -23,7 +23,7 @@ const Navigation = () => {
     { name: 'Services', href: '/#services', type: 'hash' },
     { name: 'Portfolio', href: '/#portfolio', type: 'hash' },
     { name: 'Careers', href: '/careers', type: 'link' },
-    { name: 'Contact', href: '/#contact', type: 'hash' },
+    { name: 'Contact', href: '/contact', type: 'link' },
   ];
 
   const handleNavClick = (e, link) => {
