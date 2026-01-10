@@ -1,147 +1,154 @@
 import { useState, useEffect, useRef } from 'react';
-import { ExternalLink, Github, ArrowRight, Code, Zap } from 'lucide-react';
+import { ExternalLink, ArrowRight, Code, Zap, ArrowUpRight } from 'lucide-react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
 gsap.registerPlugin(ScrollTrigger);
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
+// Fallback sample projects when API is unavailable
+const fallbackProjects = [
+  {
+    id: '1',
+    title: 'AfriTutors',
+    category: 'Web Development',
+    description: 'Educational platform connecting African students with quality tutors across the continent.',
+    image: 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=800&q=80',
+    technologies: ['React', 'Node.js', 'MongoDB', 'WebRTC'],
+    link: 'https://afritutors.com',
+    featured: true,
+  },
+  {
+    id: '2',
+    title: 'AfriTutors Learning Platform',
+    category: 'Web Development',
+    description: 'Advanced learning management system with interactive courses and real-time collaboration.',
+    image: 'https://images.unsplash.com/photo-1501504905252-473c47e087f8?w=800&q=80',
+    technologies: ['Next.js', 'PostgreSQL', 'AWS', 'Tailwind'],
+    link: 'https://learn.afritutors.com',
+    featured: true,
+  },
+  {
+    id: '3',
+    title: 'ZG Business Group',
+    category: 'Web Development',
+    description: 'Corporate website for business consulting and investment firm with modern design.',
+    image: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800&q=80',
+    technologies: ['React', 'Vite', 'Tailwind', 'GSAP'],
+    link: 'https://zgbusinessgroup.com',
+    featured: true,
+  },
+  {
+    id: '4',
+    title: 'Enterprise Cloud Migration',
+    category: 'Cloud',
+    description: 'Migrated legacy infrastructure to AWS cloud, reducing costs and improving performance.',
+    image: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800&q=80',
+    technologies: ['AWS', 'Docker', 'Kubernetes', 'Terraform'],
+    link: '#',
+    featured: false,
+  },
+  {
+    id: '5',
+    title: 'IoT Security Platform',
+    category: 'IoT',
+    description: 'End-to-end IoT security solution monitoring 10,000+ devices in real-time.',
+    image: 'https://images.unsplash.com/photo-1558346490-a72e53ae2d4f?w=800&q=80',
+    technologies: ['IoT', 'Node.js', 'MongoDB', 'MQTT'],
+    link: '#',
+    featured: false,
+  },
+  {
+    id: '6',
+    title: 'VoIP Communication Suite',
+    category: 'Telecom',
+    description: 'Scalable VoIP platform handling 50,000 concurrent calls with crystal-clear quality.',
+    image: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&q=80',
+    technologies: ['WebRTC', 'Node.js', 'Redis', 'SIP'],
+    link: '#',
+    featured: false,
+  },
+];
+
 const Portfolio = () => {
   const [activeFilter, setActiveFilter] = useState('all');
   const [projects, setProjects] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [hoveredProject, setHoveredProject] = useState(null);
   const sectionRef = useRef();
 
-  // Real Philocom projects
-  const sampleProjects = [
-    {
-      id: '1',
-      title: 'AfriTutors',
-      category: 'web',
-      description: 'Educational platform connecting African students with quality tutors across the continent.',
-      image: 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=800&q=80',
-      technologies: ['React', 'Node.js', 'MongoDB', 'WebRTC'],
-      link: 'https://afritutors.com',
-      github: '#',
-      featured: true,
-      stats: {
-        students: '5K+',
-        tutors: '500+',
-        sessions: '10K+'
+  useEffect(() => {
+    const fetchProjects = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/projects`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.projects && data.projects.length > 0) {
+            setProjects(data.projects);
+          } else {
+            setProjects(fallbackProjects);
+          }
+        } else {
+          setProjects(fallbackProjects);
+        }
+      } catch (error) {
+        console.error('Error fetching projects:', error);
+        setProjects(fallbackProjects);
+      } finally {
+        setLoading(false);
       }
-    },
-    {
-      id: '2',
-      title: 'AfriTutors Learning Platform',
-      category: 'web',
-      description: 'Advanced learning management system with interactive courses and real-time collaboration.',
-      image: 'https://images.unsplash.com/photo-1501504905252-473c47e087f8?w=800&q=80',
-      technologies: ['Next.js', 'PostgreSQL', 'AWS', 'Tailwind'],
-      link: 'https://learn.afritutors.com',
-      github: '#',
-      featured: true,
-      stats: {
-        courses: '100+',
-        completion: '85%',
-        satisfaction: '4.8/5'
-      }
-    },
-    {
-      id: '3',
-      title: 'ZG Business Group',
-      category: 'web',
-      description: 'Corporate website for business consulting and investment firm with modern design.',
-      image: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800&q=80',
-      technologies: ['React', 'Vite', 'Tailwind', 'GSAP'],
-      link: 'https://zgbusinessgroup.com',
-      github: '#',
-      featured: true,
-      stats: {
-        traffic: '+200%',
-        leads: '+150%',
-        engagement: '3.5min'
-      }
-    },
-    {
-      id: '4',
-      title: 'Enterprise Cloud Migration',
-      category: 'cloud',
-      description: 'Migrated legacy infrastructure to AWS cloud, reducing costs by 40% and improving performance.',
-      image: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800&q=80',
-      technologies: ['AWS', 'Docker', 'Kubernetes', 'Terraform'],
-      link: '#',
-      github: '#',
-      featured: false,
-      stats: {
-        performance: '+250%',
-        cost: '-40%',
-        uptime: '99.9%'
-      }
-    },
-    {
-      id: '5',
-      title: 'IoT Security Platform',
-      category: 'iot',
-      description: 'Built end-to-end IoT security solution monitoring 10,000+ devices in real-time.',
-      image: 'https://images.unsplash.com/photo-1558346490-a72e53ae2d4f?w=800&q=80',
-      technologies: ['IoT', 'Node.js', 'MongoDB', 'MQTT'],
-      link: '#',
-      github: '#',
-      featured: false,
-      stats: {
-        devices: '10K+',
-        latency: '<100ms',
-        threats: '500+ blocked'
-      }
-    },
-    {
-      id: '6',
-      title: 'VoIP Communication Suite',
-      category: 'telecom',
-      description: 'Scalable VoIP platform handling 50,000 concurrent calls with crystal-clear quality.',
-      image: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&q=80',
-      technologies: ['WebRTC', 'Node.js', 'Redis', 'SIP'],
-      link: '#',
-      github: '#',
-      featured: false,
-      stats: {
-        calls: '50K concurrent',
-        quality: 'HD Voice',
-        uptime: '99.95%'
-      }
-    },
-  ];
+    };
+
+    fetchProjects();
+  }, []);
 
   useEffect(() => {
-    setProjects(sampleProjects);
+    if (!loading && projects.length > 0) {
+      const ctx = gsap.context(() => {
+        // Animate section header
+        gsap.fromTo('.portfolio-header',
+          { opacity: 0, y: 50 },
+          {
+            opacity: 1,
+            y: 0,
+            duration: 1,
+            ease: 'power3.out',
+            scrollTrigger: {
+              trigger: sectionRef.current,
+              start: 'top 80%',
+            }
+          }
+        );
 
-    // Animate project cards on scroll
-    gsap.fromTo(
-      '.project-card',
-      {
-        opacity: 0,
-        y: 60,
-        scale: 0.95,
-      },
-      {
-        opacity: 1,
-        y: 0,
-        scale: 1,
-        duration: 0.8,
-        stagger: 0.15,
-        ease: 'power3.out',
-        scrollTrigger: {
-          trigger: sectionRef.current,
-          start: 'top 70%',
-        },
-      }
-    );
-  }, []);
+        // Animate project cards with stagger
+        gsap.fromTo('.project-card',
+          { opacity: 0, y: 80, scale: 0.95 },
+          {
+            opacity: 1,
+            y: 0,
+            scale: 1,
+            duration: 0.8,
+            stagger: 0.12,
+            ease: 'power3.out',
+            scrollTrigger: {
+              trigger: '.projects-grid',
+              start: 'top 75%',
+            }
+          }
+        );
+      }, sectionRef);
+
+      return () => ctx.revert();
+    }
+  }, [loading, projects]);
 
   const categories = [
     { id: 'all', name: 'All Projects' },
-    { id: 'web', name: 'Web Development' },
-    { id: 'cloud', name: 'Cloud' },
-    { id: 'iot', name: 'IoT' },
-    { id: 'telecom', name: 'Telecom' },
+    { id: 'Web Development', name: 'Web Development' },
+    { id: 'Cloud', name: 'Cloud' },
+    { id: 'IoT', name: 'IoT' },
+    { id: 'Telecom', name: 'Telecom' },
   ];
 
   const filteredProjects = activeFilter === 'all'
@@ -154,26 +161,31 @@ const Portfolio = () => {
       ref={sectionRef}
       className="py-32 px-6 bg-[#030305] relative overflow-hidden"
     >
-      {/* Background Elements */}
-      <div className="absolute top-0 left-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl"></div>
-      <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl"></div>
+      {/* Background effects */}
+      <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+      <div className="absolute top-1/4 left-0 w-[600px] h-[600px] bg-cyan-500/5 rounded-full blur-[150px]" />
+      <div className="absolute bottom-1/4 right-0 w-[500px] h-[500px] bg-blue-600/5 rounded-full blur-[120px]" />
 
       <div className="max-w-7xl mx-auto relative z-10">
         {/* Section Header */}
-        <div className="text-center mb-16">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-cyan-500/10 border border-cyan-500/20 mb-6">
+        <div className="portfolio-header text-center mb-20">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/[0.03] border border-white/[0.08] mb-8">
             <Code className="w-4 h-4 text-cyan-400" />
-            <span className="text-sm font-medium text-cyan-400 tracking-wider uppercase">
-              Our Work
+            <span className="text-sm font-medium text-gray-400 tracking-wider uppercase">
+              Our Portfolio
             </span>
           </div>
 
-          <h2 className="text-5xl md:text-6xl font-bold text-white mb-6">
-            Featured <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">Projects</span>
+          <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 tracking-tight">
+            Featured{' '}
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-500">
+              Projects
+            </span>
           </h2>
 
-          <p className="text-xl text-gray-400 max-w-3xl mx-auto">
-            Transforming businesses through innovative technology solutions. Here's a showcase of our recent work.
+          <p className="text-lg md:text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed">
+            Transforming businesses through innovative technology solutions.
+            Here's a showcase of our recent work.
           </p>
         </div>
 
@@ -183,117 +195,153 @@ const Portfolio = () => {
             <button
               key={category.id}
               onClick={() => setActiveFilter(category.id)}
-              className={`px-6 py-3 rounded-full font-medium text-sm transition-all duration-300 ${
+              className={`relative px-6 py-3 rounded-full font-medium text-sm transition-all duration-300 ${
                 activeFilter === category.id
-                  ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow-lg shadow-cyan-500/30'
-                  : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white border border-white/10'
+                  ? 'text-white'
+                  : 'text-gray-400 hover:text-white bg-white/[0.02] border border-white/[0.06] hover:border-white/10'
               }`}
             >
-              {category.name}
+              {activeFilter === category.id && (
+                <span className="absolute inset-0 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-full" />
+              )}
+              <span className="relative z-10">{category.name}</span>
             </button>
           ))}
         </div>
 
-        {/* Projects Grid */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {filteredProjects.map((project, index) => (
-            <div
-              key={project.id}
-              className="project-card group relative bg-[#0a0a0a] rounded-3xl overflow-hidden border border-white/5 hover:border-cyan-500/30 transition-all duration-500 hover:shadow-2xl hover:shadow-cyan-500/20 hover:-translate-y-2"
-            >
-              {/* Image Container */}
-              <div className="relative h-64 overflow-hidden">
-                <img
-                  src={project.image}
-                  alt={project.title}
-                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a]/80 to-transparent"></div>
-
-                {/* Featured Badge */}
-                {project.featured && (
-                  <div className="absolute top-4 right-4 px-3 py-1.5 bg-gradient-to-r from-cyan-500 to-blue-500 text-white text-xs font-bold rounded-full flex items-center gap-1">
-                    <Zap className="w-3 h-3" />
-                    Featured
-                  </div>
-                )}
-
-                {/* Overlay Links */}
-                <div className="absolute inset-0 flex items-center justify-center gap-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                  <a
-                    href={project.link}
-                    className="p-3 bg-white/10 backdrop-blur-md rounded-full border border-white/20 hover:bg-white/20 transition-all"
-                    aria-label="View project"
-                  >
-                    <ExternalLink className="w-5 h-5 text-white" />
-                  </a>
-                  <a
-                    href={project.github}
-                    className="p-3 bg-white/10 backdrop-blur-md rounded-full border border-white/20 hover:bg-white/20 transition-all"
-                    aria-label="View source code"
-                  >
-                    <Github className="w-5 h-5 text-white" />
-                  </a>
-                </div>
-              </div>
-
-              {/* Content */}
-              <div className="p-6">
-                <h3 className="text-xl font-bold text-white mb-3 group-hover:text-cyan-400 transition-colors">
-                  {project.title}
-                </h3>
-
-                <p className="text-gray-400 text-sm mb-4 line-clamp-2">
-                  {project.description}
-                </p>
-
-                {/* Stats */}
-                <div className="grid grid-cols-3 gap-3 mb-4 p-3 bg-white/5 rounded-xl">
-                  {Object.entries(project.stats).map(([key, value], idx) => (
-                    <div key={idx} className="text-center">
-                      <div className="text-cyan-400 font-bold text-sm">{value}</div>
-                      <div className="text-gray-500 text-xs capitalize">{key}</div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Technologies */}
-                <div className="flex flex-wrap gap-2 mb-4">
-                  {project.technologies.slice(0, 3).map((tech, idx) => (
-                    <span
-                      key={idx}
-                      className="px-3 py-1 bg-cyan-500/10 text-cyan-400 text-xs font-medium rounded-full border border-cyan-500/20"
-                    >
-                      {tech}
-                    </span>
-                  ))}
-                  {project.technologies.length > 3 && (
-                    <span className="px-3 py-1 bg-white/5 text-gray-400 text-xs font-medium rounded-full">
-                      +{project.technologies.length - 3}
-                    </span>
-                  )}
-                </div>
-
-                {/* View Details Link */}
-                <a
-                  href={project.link}
-                  className="inline-flex items-center gap-2 text-cyan-400 text-sm font-semibold hover:gap-3 transition-all duration-300"
-                >
-                  View Case Study
-                  <ArrowRight className="w-4 h-4" />
-                </a>
-              </div>
+        {/* Loading State */}
+        {loading && (
+          <div className="flex justify-center items-center py-32">
+            <div className="relative w-16 h-16">
+              <div className="absolute inset-0 rounded-full border-2 border-cyan-400/20" />
+              <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-cyan-400 animate-spin" />
             </div>
-          ))}
-        </div>
+          </div>
+        )}
 
-        {/* Load More Button */}
-        <div className="text-center mt-16">
-          <button className="group px-8 py-4 bg-white/5 text-white font-semibold rounded-full border border-white/10 hover:bg-white/10 hover:border-cyan-500/50 transition-all duration-300 flex items-center gap-3 mx-auto">
-            Load More Projects
-            <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-          </button>
-        </div>
+        {/* Projects Grid */}
+        {!loading && (
+          <div className="projects-grid grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredProjects.map((project) => (
+              <div
+                key={project.id}
+                className="project-card group relative"
+                onMouseEnter={() => setHoveredProject(project.id)}
+                onMouseLeave={() => setHoveredProject(null)}
+              >
+                {/* Gradient border effect */}
+                <div className="absolute -inset-[1px] bg-gradient-to-r from-cyan-500/50 via-blue-500/50 to-purple-500/50 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-sm" />
+                <div className="absolute -inset-[1px] bg-gradient-to-r from-cyan-500 via-blue-500 to-purple-500 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+
+                {/* Card content */}
+                <div className="relative bg-[#0a0a0f] rounded-2xl overflow-hidden border border-white/[0.06] group-hover:border-transparent transition-all duration-500">
+                  {/* Image Container */}
+                  <div className="relative h-56 overflow-hidden">
+                    <img
+                      src={project.image || 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800&q=80'}
+                      alt={project.title}
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                    />
+
+                    {/* Gradient overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0f] via-[#0a0a0f]/60 to-transparent" />
+
+                    {/* Top gradient for featured badge */}
+                    <div className="absolute inset-0 bg-gradient-to-b from-black/40 to-transparent" />
+
+                    {/* Featured Badge */}
+                    {project.featured && (
+                      <div className="absolute top-4 left-4 px-3 py-1.5 bg-gradient-to-r from-cyan-500 to-blue-500 text-white text-xs font-bold rounded-full flex items-center gap-1.5 shadow-lg shadow-cyan-500/25">
+                        <Zap className="w-3 h-3" />
+                        Featured
+                      </div>
+                    )}
+
+                    {/* Category badge */}
+                    <div className="absolute top-4 right-4 px-3 py-1 bg-black/50 backdrop-blur-sm text-white/80 text-xs font-medium rounded-full border border-white/10">
+                      {project.category}
+                    </div>
+
+                    {/* Hover overlay with link */}
+                    <div className={`absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm transition-all duration-300 ${
+                      hoveredProject === project.id ? 'opacity-100' : 'opacity-0'
+                    }`}>
+                      {project.link && project.link !== '#' && (
+                        <a
+                          href={project.link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 px-6 py-3 bg-white text-black font-semibold text-sm rounded-full hover:scale-105 transition-transform"
+                        >
+                          View Project
+                          <ArrowUpRight className="w-4 h-4" />
+                        </a>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Content */}
+                  <div className="p-6">
+                    <h3 className="text-xl font-bold text-white mb-3 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-cyan-400 group-hover:to-blue-400 transition-all duration-300">
+                      {project.title}
+                    </h3>
+
+                    <p className="text-gray-400 text-sm leading-relaxed mb-5 line-clamp-2">
+                      {project.description}
+                    </p>
+
+                    {/* Technologies */}
+                    {project.technologies && project.technologies.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mb-5">
+                        {project.technologies.slice(0, 3).map((tech, idx) => (
+                          <span
+                            key={idx}
+                            className="px-3 py-1 bg-white/[0.03] text-gray-400 text-xs font-medium rounded-full border border-white/[0.06] group-hover:border-cyan-500/20 group-hover:text-cyan-400/80 transition-all duration-300"
+                          >
+                            {tech}
+                          </span>
+                        ))}
+                        {project.technologies.length > 3 && (
+                          <span className="px-3 py-1 bg-white/[0.02] text-gray-500 text-xs font-medium rounded-full">
+                            +{project.technologies.length - 3}
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    {/* View link */}
+                    {project.link && project.link !== '#' && (
+                      <a
+                        href={project.link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 text-gray-400 text-sm font-medium group-hover:text-cyan-400 transition-colors"
+                      >
+                        <span>View Case Study</span>
+                        <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                      </a>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* View All Projects CTA */}
+        {!loading && filteredProjects.length > 0 && (
+          <div className="text-center mt-16">
+            <a
+              href="/contact"
+              className="group inline-flex items-center gap-3 px-8 py-4 bg-white/[0.02] backdrop-blur-sm text-white font-semibold rounded-full border border-white/10 hover:border-cyan-400/50 hover:bg-white/[0.04] transition-all duration-300"
+            >
+              <span>Start Your Project</span>
+              <span className="flex items-center justify-center w-6 h-6 rounded-full bg-white/10 group-hover:bg-cyan-500/20 transition-colors">
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+              </span>
+            </a>
+          </div>
+        )}
       </div>
     </section>
   );

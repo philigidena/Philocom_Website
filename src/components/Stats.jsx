@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { TrendingUp, Users, Award, Globe } from 'lucide-react';
+import { TrendingUp, Users, Award, Calendar } from 'lucide-react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
@@ -12,19 +12,19 @@ const Stats = () => {
   const stats = [
     {
       icon: TrendingUp,
-      value: 500,
+      value: 50,
       suffix: '+',
       label: 'Projects Delivered',
-      description: 'Successful implementations worldwide',
-      color: 'cyan'
+      description: 'Successful implementations',
+      gradient: 'from-cyan-400 to-cyan-600'
     },
     {
       icon: Users,
-      value: 200,
+      value: 30,
       suffix: '+',
       label: 'Happy Clients',
       description: 'Businesses transformed',
-      color: 'blue'
+      gradient: 'from-cyan-500 to-blue-600'
     },
     {
       icon: Award,
@@ -32,19 +32,42 @@ const Stats = () => {
       suffix: '%',
       label: 'Client Satisfaction',
       description: 'Average satisfaction rating',
-      color: 'purple'
+      gradient: 'from-blue-500 to-blue-700'
     },
     {
-      icon: Globe,
-      value: 45,
+      icon: Calendar,
+      value: 7,
       suffix: '+',
-      label: 'Countries Served',
-      description: 'Global reach and impact',
-      color: 'green'
+      label: 'Years Experience',
+      description: 'Since 2017',
+      gradient: 'from-blue-600 to-cyan-500'
     },
   ];
 
   const [counters, setCounters] = useState(stats.map(() => 0));
+
+  useEffect(() => {
+    const ctx = gsap.context(() => {
+      // Animate stat cards
+      gsap.fromTo('.stat-card',
+        { opacity: 0, y: 40, scale: 0.95 },
+        {
+          opacity: 1,
+          y: 0,
+          scale: 1,
+          duration: 0.7,
+          stagger: 0.1,
+          ease: 'power3.out',
+          scrollTrigger: {
+            trigger: sectionRef.current,
+            start: 'top 80%',
+          }
+        }
+      );
+    }, sectionRef);
+
+    return () => ctx.revert();
+  }, []);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -73,7 +96,7 @@ const Stats = () => {
   const animateCounters = () => {
     stats.forEach((stat, index) => {
       let current = 0;
-      const increment = stat.value / 60; // 60 frames for smooth animation
+      const increment = stat.value / 50;
       const timer = setInterval(() => {
         current += increment;
         if (current >= stat.value) {
@@ -89,77 +112,68 @@ const Stats = () => {
     });
   };
 
-  const getColorClasses = (color) => {
-    const colors = {
-      cyan: {
-        bg: 'from-cyan-500/20 to-cyan-500/5',
-        border: 'border-cyan-500/30',
-        text: 'text-cyan-400',
-        glow: 'shadow-cyan-500/50'
-      },
-      blue: {
-        bg: 'from-blue-500/20 to-blue-500/5',
-        border: 'border-blue-500/30',
-        text: 'text-blue-400',
-        glow: 'shadow-blue-500/50'
-      },
-      purple: {
-        bg: 'from-purple-500/20 to-purple-500/5',
-        border: 'border-purple-500/30',
-        text: 'text-purple-400',
-        glow: 'shadow-purple-500/50'
-      },
-      green: {
-        bg: 'from-green-500/20 to-green-500/5',
-        border: 'border-green-500/30',
-        text: 'text-green-400',
-        glow: 'shadow-green-500/50'
-      },
-    };
-    return colors[color] || colors.cyan;
-  };
-
   return (
     <section
       ref={sectionRef}
-      className="py-20 px-6 bg-white relative"
+      className="py-20 px-6 bg-[#030305] relative overflow-hidden"
     >
-      <div className="max-w-7xl mx-auto">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
+      {/* Top gradient line */}
+      <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+
+      {/* Background orbs */}
+      <div className="absolute top-1/2 left-[10%] w-[400px] h-[400px] bg-cyan-500/5 rounded-full blur-[120px] -translate-y-1/2" />
+      <div className="absolute top-1/2 right-[10%] w-[400px] h-[400px] bg-purple-500/5 rounded-full blur-[120px] -translate-y-1/2" />
+
+      <div className="max-w-7xl mx-auto relative z-10">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
           {stats.map((stat, index) => {
             const Icon = stat.icon;
-            const colorClasses = getColorClasses(stat.color);
 
             return (
               <div
                 key={index}
-                className="group relative"
+                className="stat-card group relative"
               >
-                <div className="p-8 bg-gray-50 rounded-3xl border border-gray-200 hover:border-gray-900 transition-all duration-500 hover:scale-105 hover:shadow-xl">
-                  {/* Icon */}
-                  <div className="w-14 h-14 rounded-2xl bg-gray-200 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
-                    <Icon className="w-7 h-7 text-gray-900" />
+                {/* Gradient border effect */}
+                <div className={`absolute -inset-[1px] bg-gradient-to-r ${stat.gradient} rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-sm`} />
+                <div className={`absolute -inset-[1px] bg-gradient-to-r ${stat.gradient} rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
+
+                {/* Card content */}
+                <div className="relative p-6 md:p-8 bg-[#0a0a0f] rounded-2xl border border-white/[0.06] group-hover:border-transparent transition-all duration-500 h-full">
+                  {/* Gradient accent on hover */}
+                  <div className={`absolute top-0 right-0 w-24 h-24 bg-gradient-to-br ${stat.gradient} opacity-0 group-hover:opacity-5 rounded-bl-[60px] transition-opacity duration-500`} />
+
+                  {/* Animated line */}
+                  <div className={`absolute left-0 top-0 w-1 h-0 bg-gradient-to-b ${stat.gradient} group-hover:h-full transition-all duration-700 rounded-l-2xl`} />
+
+                  <div className="relative z-10">
+                    {/* Icon */}
+                    <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${stat.gradient} p-[1px] mb-5`}>
+                      <div className="w-full h-full rounded-xl bg-[#0a0a0f] flex items-center justify-center group-hover:bg-transparent transition-colors duration-500">
+                        <Icon className="w-5 h-5 text-white" />
+                      </div>
+                    </div>
+
+                    {/* Counter */}
+                    <div className="mb-2">
+                      <span className={`text-4xl md:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r ${stat.gradient}`}>
+                        {counters[index]}
+                      </span>
+                      <span className={`text-2xl md:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r ${stat.gradient}`}>
+                        {stat.suffix}
+                      </span>
+                    </div>
+
+                    {/* Label */}
+                    <h3 className="text-white font-bold text-base mb-1 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-white group-hover:to-gray-300 transition-all duration-300">
+                      {stat.label}
+                    </h3>
+
+                    {/* Description */}
+                    <p className="text-gray-500 text-sm group-hover:text-gray-400 transition-colors duration-300">
+                      {stat.description}
+                    </p>
                   </div>
-
-                  {/* Counter */}
-                  <div className="mb-3">
-                    <span className="text-5xl font-bold text-gray-900">
-                      {counters[index]}
-                    </span>
-                    <span className="text-3xl font-bold text-gray-900">
-                      {stat.suffix}
-                    </span>
-                  </div>
-
-                  {/* Label */}
-                  <h3 className="text-gray-900 font-bold text-lg mb-2">
-                    {stat.label}
-                  </h3>
-
-                  {/* Description */}
-                  <p className="text-gray-600 text-sm">
-                    {stat.description}
-                  </p>
                 </div>
               </div>
             );
