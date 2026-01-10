@@ -283,6 +283,7 @@ const Hero = () => {
             {[
               { abbr: 'Li', name: 'LinkedIn', href: 'https://linkedin.com/company/philocom' },
               { abbr: 'X', name: 'Twitter', href: 'https://twitter.com/philocom_' },
+              { abbr: 'Fb', name: 'Facebook', href: 'https://www.facebook.com/share/1NKm444kyR/' },
               { abbr: 'Ig', name: 'Instagram', href: 'https://www.instagram.com/philo__com' }
             ].map((social, i) => (
               <a

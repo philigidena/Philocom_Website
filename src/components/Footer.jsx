@@ -122,6 +122,7 @@ const Footer = () => {
   const socialLinks = [
     { icon: Linkedin, href: 'https://linkedin.com/company/philocom', label: 'Li' },
     { icon: Twitter, href: 'https://twitter.com/philocom_', label: 'X' },
+    { icon: Facebook, href: 'https://www.facebook.com/share/1NKm444kyR/', label: 'Fb' },
     { icon: Instagram, href: 'https://www.instagram.com/philo__com', label: 'Ig' },
   ];
 
