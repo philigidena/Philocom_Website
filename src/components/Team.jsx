@@ -11,42 +11,42 @@ const Team = () => {
 
   const teamMembers = [
     {
-      name: 'Abebe Tadesse',
-      role: 'CEO & Co-Founder',
-      bio: '15+ years in enterprise technology. Leading digital transformation across East Africa.',
+      name: 'Filmon Tsegazeab',
+      role: 'CEO & Business Analyst',
+      bio: 'Strategic leader driving business growth through data-driven insights and innovative solutions.',
       linkedin: 'https://linkedin.com/in/',
-      email: 'abebe@philocom.co',
-      expertise: ['Cloud Architecture', 'Digital Transformation', 'Leadership'],
+      email: 'filmon.t@philocom.co',
+      expertise: ['Business Strategy', 'Data Analytics', 'Leadership'],
       gradient: 'from-cyan-400 to-cyan-600',
-      initials: 'AT'
+      initials: 'FT'
     },
     {
-      name: 'Hana Bekele',
+      name: 'Filmon Gidena',
       role: 'CTO & Co-Founder',
-      bio: 'Cybersecurity expert with 12+ years protecting critical infrastructure.',
+      bio: 'Technology visionary with expertise in building scalable enterprise solutions and leading technical teams.',
       linkedin: 'https://linkedin.com/in/',
-      email: 'hana@philocom.co',
-      expertise: ['Cybersecurity', 'System Architecture', 'DevSecOps'],
+      email: 'filmon.g@philocom.co',
+      expertise: ['System Architecture', 'Cloud Solutions', 'Technical Leadership'],
       gradient: 'from-cyan-500 to-blue-600',
-      initials: 'HB'
+      initials: 'FG'
     },
     {
-      name: 'Dawit Mengistu',
-      role: 'Head of IoT Solutions',
-      bio: 'Pioneer in IoT with 100+ successful smart device deployments across Africa.',
+      name: 'Aberaham Yifter',
+      role: 'DevOps Engineer',
+      bio: 'Infrastructure specialist focused on automation, CI/CD pipelines, and cloud-native deployments.',
       linkedin: 'https://linkedin.com/in/',
-      email: 'dawit@philocom.co',
-      expertise: ['IoT Development', 'Edge Computing', 'Sensor Networks'],
+      email: 'aberaham@philocom.co',
+      expertise: ['DevOps', 'Cloud Infrastructure', 'Automation'],
       gradient: 'from-blue-500 to-blue-700',
-      initials: 'DM'
+      initials: 'AY'
     },
     {
-      name: 'Meron Hailu',
-      role: 'VP of Engineering',
-      bio: 'Full-stack architect specializing in scalable cloud-native applications.',
+      name: 'Mensur Hassan',
+      role: 'Senior Network Engineer',
+      bio: 'Expert in designing and implementing robust network architectures for enterprise clients.',
       linkedin: 'https://linkedin.com/in/',
-      email: 'meron@philocom.co',
-      expertise: ['Software Architecture', 'Microservices', 'Team Leadership'],
+      email: 'mensur@philocom.co',
+      expertise: ['Network Architecture', 'Security', 'VoIP Systems'],
       gradient: 'from-blue-600 to-cyan-500',
       initials: 'MH'
     },
