@@ -282,8 +282,8 @@ const Hero = () => {
           <div className="flex flex-col gap-3">
             {[
               { abbr: 'Li', name: 'LinkedIn', href: 'https://linkedin.com/company/philocom' },
-              { abbr: 'Tw', name: 'Twitter', href: 'https://twitter.com/philocom' },
-              { abbr: 'Ig', name: 'Instagram', href: 'https://instagram.com/philocom' }
+              { abbr: 'X', name: 'Twitter', href: 'https://twitter.com/philocom_' },
+              { abbr: 'Ig', name: 'Instagram', href: 'https://www.instagram.com/philo__com' }
             ].map((social, i) => (
               <a
                 key={i}
