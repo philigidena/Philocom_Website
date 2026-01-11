@@ -27,7 +27,8 @@ import { format, formatDistanceToNow } from 'date-fns';
 import AdminLayout from '../components/AdminLayout';
 import { useAuth } from '../context/AuthContext';
 
-const API_URL = import.meta.env.VITE_API_BASE_URL || '';
+// API URL with fallback to AWS API Gateway
+const API_URL = import.meta.env.VITE_API_BASE_URL || 'https://gtafs0o8rd.execute-api.eu-central-1.amazonaws.com/dev';
 
 const tabs = [
   { id: 'inbound', name: 'Inbox', icon: Inbox },
