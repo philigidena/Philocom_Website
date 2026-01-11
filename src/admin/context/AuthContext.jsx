@@ -22,6 +22,12 @@ const userPool = poolData.UserPoolId && poolData.ClientId
   ? new CognitoUserPool(poolData)
   : null;
 
+// Fallback credentials when Cognito is not configured
+const FALLBACK_CREDENTIALS = {
+  email: 'admin@philocom.co',
+  password: 'PhiloAdmin2024!',
+};
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -33,7 +39,16 @@ export function AuthProvider({ children }) {
   }, []);
 
   const checkAuthState = useCallback(() => {
+    // Check fallback localStorage auth first
     if (!userPool) {
+      const storedUser = localStorage.getItem('philocom_admin_user');
+      if (storedUser) {
+        try {
+          setUser(JSON.parse(storedUser));
+        } catch (e) {
+          localStorage.removeItem('philocom_admin_user');
+        }
+      }
       setIsLoading(false);
       return;
     }
@@ -75,12 +90,27 @@ export function AuthProvider({ children }) {
   }, []);
 
   const login = useCallback(async (email, password) => {
-    if (!userPool) {
-      throw new Error('Authentication not configured');
-    }
-
     setError(null);
     setIsLoading(true);
+
+    // Fallback authentication when Cognito is not configured
+    if (!userPool) {
+      return new Promise((resolve, reject) => {
+        setTimeout(() => {
+          if (email === FALLBACK_CREDENTIALS.email && password === FALLBACK_CREDENTIALS.password) {
+            const userData = { email, name: 'Admin' };
+            setUser(userData);
+            localStorage.setItem('philocom_admin_user', JSON.stringify(userData));
+            setIsLoading(false);
+            resolve({ success: true });
+          } else {
+            setError('Invalid email or password');
+            setIsLoading(false);
+            reject(new Error('Invalid email or password'));
+          }
+        }, 500);
+      });
+    }
 
     return new Promise((resolve, reject) => {
       const cognitoUser = new CognitoUser({
@@ -119,7 +149,7 @@ export function AuthProvider({ children }) {
           setIsLoading(false);
           reject(err);
         },
-        newPasswordRequired: (userAttributes, requiredAttributes) => {
+        newPasswordRequired: (userAttributes) => {
           // Handle new password required (first login)
           setIsLoading(false);
           reject({
@@ -154,11 +184,14 @@ export function AuthProvider({ children }) {
   }, [checkAuthState]);
 
   const logout = useCallback(() => {
-    if (!userPool) return;
+    // Clear fallback auth
+    localStorage.removeItem('philocom_admin_user');
 
-    const cognitoUser = userPool.getCurrentUser();
-    if (cognitoUser) {
-      cognitoUser.signOut();
+    if (userPool) {
+      const cognitoUser = userPool.getCurrentUser();
+      if (cognitoUser) {
+        cognitoUser.signOut();
+      }
     }
     setUser(null);
   }, []);
