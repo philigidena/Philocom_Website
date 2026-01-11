@@ -1,19 +1,24 @@
 /**
  * Lambda handler for receiving emails from Resend Inbound Webhooks
- * Supports both Resend format and legacy Cloudflare format
+ * Supports both Resend/Svix format and legacy Cloudflare format
  */
 
 import { v4 as uuidv4 } from 'uuid';
 import { SSMClient, GetParameterCommand } from '@aws-sdk/client-ssm';
-import { createHmac } from 'crypto';
+import { createHmac, timingSafeEqual } from 'crypto';
 import { putItem, updateItem, getItem } from '../../utils/db.js';
 import { successResponse, errorResponse } from '../../utils/response.js';
 
 const EMAILS_TABLE = process.env.EMAILS_TABLE;
 const EMAIL_CONTACTS_TABLE = process.env.EMAIL_CONTACTS_TABLE;
 const WEBHOOK_SECRET_PARAM = process.env.WEBHOOK_SECRET_PARAM || '/philocom/webhook-secret';
+const RESEND_API_KEY_PARAM = process.env.RESEND_API_KEY_PARAM || '/philocom/resend-api-key';
 
 const ssmClient = new SSMClient({ region: process.env.AWS_REGION || 'eu-central-1' });
+
+// Cache for Resend API key
+let cachedResendApiKey = null;
+let resendKeyCacheExpiry = 0;
 
 // Cache for webhook secret
 let cachedWebhookSecret = null;
@@ -45,16 +50,131 @@ const getWebhookSecret = async () => {
 };
 
 /**
- * Verify Resend webhook signature
+ * Get Resend API key from SSM Parameter Store (with caching)
  */
-const verifyResendSignature = (payload, signature, secret) => {
-  if (!signature || !secret) return false;
+const getResendApiKey = async () => {
+  const now = Date.now();
+  if (cachedResendApiKey && now < resendKeyCacheExpiry) {
+    return cachedResendApiKey;
+  }
 
-  const expectedSignature = createHmac('sha256', secret)
-    .update(payload)
-    .digest('hex');
+  try {
+    const command = new GetParameterCommand({
+      Name: RESEND_API_KEY_PARAM,
+      WithDecryption: true,
+    });
 
-  return signature === expectedSignature || signature === `sha256=${expectedSignature}`;
+    const response = await ssmClient.send(command);
+    cachedResendApiKey = response.Parameter.Value;
+    resendKeyCacheExpiry = now + (5 * 60 * 1000); // Cache for 5 minutes
+    return cachedResendApiKey;
+  } catch (error) {
+    console.error('Failed to get Resend API key from SSM:', error);
+    return null;
+  }
+};
+
+/**
+ * Fetch full email content from Resend API
+ * Webhooks don't include body - must fetch via /emails/receiving/:id endpoint
+ */
+const fetchEmailContent = async (emailId) => {
+  try {
+    const apiKey = await getResendApiKey();
+    if (!apiKey) {
+      console.warn('No Resend API key available');
+      return null;
+    }
+
+    // Use the receiving endpoint for inbound emails
+    const response = await fetch(`https://api.resend.com/emails/receiving/${emailId}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Failed to fetch email from Resend:', response.status, errorText);
+      return null;
+    }
+
+    const emailData = await response.json();
+    console.log('Fetched email content from Resend:', {
+      hasHtml: !!emailData.html,
+      hasText: !!emailData.text,
+      htmlLength: emailData.html?.length || 0,
+      textLength: emailData.text?.length || 0,
+    });
+    return emailData;
+  } catch (error) {
+    console.error('Error fetching email content from Resend:', error);
+    return null;
+  }
+};
+
+/**
+ * Verify Svix webhook signature (used by Resend)
+ * Svix signature format: v1,<base64-signature>
+ * Headers: svix-id, svix-timestamp, svix-signature
+ */
+const verifySvixSignature = (payload, headers, secret) => {
+  try {
+    const svixId = headers['svix-id'] || headers['Svix-Id'];
+    const svixTimestamp = headers['svix-timestamp'] || headers['Svix-Timestamp'];
+    const svixSignature = headers['svix-signature'] || headers['Svix-Signature'];
+
+    if (!svixId || !svixTimestamp || !svixSignature || !secret) {
+      console.log('Missing Svix headers or secret', { svixId: !!svixId, svixTimestamp: !!svixTimestamp, svixSignature: !!svixSignature, secret: !!secret });
+      return false;
+    }
+
+    // Check timestamp is within 5 minutes
+    const timestamp = parseInt(svixTimestamp, 10);
+    const now = Math.floor(Date.now() / 1000);
+    if (Math.abs(now - timestamp) > 300) {
+      console.warn('Svix timestamp too old or in future', { timestamp, now, diff: now - timestamp });
+      return false;
+    }
+
+    // Construct the signed payload
+    const signedPayload = `${svixId}.${svixTimestamp}.${payload}`;
+
+    // Extract the secret key (remove whsec_ prefix if present)
+    const secretKey = secret.startsWith('whsec_') ? secret.slice(6) : secret;
+    const secretBytes = Buffer.from(secretKey, 'base64');
+
+    // Calculate expected signature
+    const expectedSignature = createHmac('sha256', secretBytes)
+      .update(signedPayload)
+      .digest('base64');
+
+    // Parse the signature header (can have multiple signatures separated by space)
+    const signatures = svixSignature.split(' ');
+
+    for (const sig of signatures) {
+      const [version, signatureValue] = sig.split(',');
+      if (version === 'v1' && signatureValue) {
+        // Compare signatures
+        try {
+          const sigBuffer = Buffer.from(signatureValue, 'base64');
+          const expectedBuffer = Buffer.from(expectedSignature, 'base64');
+          if (sigBuffer.length === expectedBuffer.length && timingSafeEqual(sigBuffer, expectedBuffer)) {
+            return true;
+          }
+        } catch (e) {
+          // Continue to next signature if comparison fails
+        }
+      }
+    }
+
+    console.warn('Svix signature mismatch', { expectedSignature, receivedSignatures: signatures });
+    return false;
+  } catch (error) {
+    console.error('Error verifying Svix signature:', error);
+    return false;
+  }
 };
 
 /**
@@ -209,23 +329,33 @@ export const handleIncoming = async (event) => {
     const body = event.body;
     const webhookSecret = await getWebhookSecret();
 
-    // Check for Resend signature header
-    const resendSignature = event.headers['svix-signature'] || event.headers['Svix-Signature'];
+    // Check for Resend/Svix signature headers
+    const hasSvixHeaders = event.headers['svix-signature'] || event.headers['Svix-Signature'];
     const legacySecret = event.headers['x-webhook-secret'] || event.headers['X-Webhook-Secret'];
 
+    console.log('Webhook headers:', {
+      hasSvixHeaders: !!hasSvixHeaders,
+      hasLegacySecret: !!legacySecret,
+      hasWebhookSecret: !!webhookSecret,
+    });
+
     // Verify authentication
-    if (resendSignature) {
+    if (hasSvixHeaders) {
       // Resend uses Svix for webhooks - verify signature
-      if (webhookSecret && !verifyResendSignature(body, resendSignature, webhookSecret)) {
-        console.warn('Invalid Resend webhook signature');
+      if (webhookSecret && !verifySvixSignature(body, event.headers, webhookSecret)) {
+        console.warn('Invalid Svix webhook signature');
         return errorResponse('Unauthorized', 401);
       }
+      console.log('Svix signature verified successfully');
     } else if (legacySecret) {
       // Legacy webhook secret verification
       if (webhookSecret && legacySecret !== webhookSecret) {
         console.warn('Invalid legacy webhook secret');
         return errorResponse('Unauthorized', 401);
       }
+    } else {
+      // No authentication provided - log but allow for testing
+      console.log('No webhook authentication provided');
     }
 
     // Parse incoming data
@@ -238,20 +368,42 @@ export const handleIncoming = async (event) => {
       subject: data.subject || data.data?.subject,
     });
 
+    // Log full payload structure for debugging
+    if (data.data) {
+      console.log('Resend payload data keys:', Object.keys(data.data));
+      console.log('Resend payload data:', JSON.stringify(data.data, null, 2).slice(0, 2000));
+    }
+
     // Handle Resend webhook format
     let emailData;
     if (data.type === 'email.received' && data.data) {
       // Resend inbound email format
+      // Webhook doesn't include body - fetch from Resend API
+      const emailId = data.data.email_id;
+      let fullEmail = null;
+
+      if (emailId) {
+        console.log('Fetching full email content from Resend API for:', emailId);
+        fullEmail = await fetchEmailContent(emailId);
+      }
+
       emailData = {
         from: data.data.from,
         to: data.data.to,
         cc: data.data.cc,
         subject: data.data.subject,
-        html: data.data.html,
-        text: data.data.text,
-        messageId: data.data.email_id,
+        html: fullEmail?.html || data.data.html || data.data.body || '',
+        text: fullEmail?.text || data.data.text || '',
+        messageId: emailId || data.data.id,
         headers: data.data.headers || {},
       };
+      console.log('Parsed email data:', {
+        hasHtml: !!emailData.html,
+        htmlLength: emailData.html?.length || 0,
+        hasText: !!emailData.text,
+        textLength: emailData.text?.length || 0,
+        fetchedFromApi: !!fullEmail,
+      });
     } else {
       // Legacy/direct format
       emailData = data;
