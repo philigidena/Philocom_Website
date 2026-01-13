@@ -386,6 +386,7 @@ const checkDuplicateByMessageId = async (messageId, ownerEmail) => {
         ':ownerEmail': ownerEmail,
       },
       Limit: 1,
+      ConsistentRead: true, // Ensure we see recently created items
     });
 
     const response = await docClient.send(command);
@@ -422,6 +423,7 @@ const checkAdminDuplicate = async (messageId, subject, fromEmail) => {
 
     // Always check by subject and sender within recent timeframe
     // This catches cases where messageIds don't match
+    // Use ConsistentRead to ensure we see recently created items (avoids race condition)
     const fiveMinutesAgo = Date.now() - (5 * 60 * 1000);
     const command = new ScanCommand({
       TableName: EMAILS_TABLE,
@@ -435,6 +437,7 @@ const checkAdminDuplicate = async (messageId, subject, fromEmail) => {
         ':minTime': fiveMinutesAgo,
       },
       Limit: 10,
+      ConsistentRead: true, // CRITICAL: Avoid race condition with recently created items
     });
 
     const response = await docClient.send(command);
