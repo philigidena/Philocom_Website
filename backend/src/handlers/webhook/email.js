@@ -421,38 +421,31 @@ const checkAdminDuplicate = async (messageId, subject, fromEmail) => {
       }
     }
 
-    // Always check by subject and sender within recent timeframe
-    // This catches cases where messageIds don't match
-    // Use QueryCommand with OwnerEmailIndex for efficiency (Scan with Limit is unreliable)
+    // Check by subject and sender within recent timeframe using table scan
+    // OwnerEmailIndex has createdAt as sort key so we can't filter on it
     const fiveMinutesAgo = Date.now() - (5 * 60 * 1000);
-    const command = new QueryCommand({
+    const command = new ScanCommand({
       TableName: EMAILS_TABLE,
-      IndexName: 'OwnerEmailIndex',
-      KeyConditionExpression: 'ownerEmail = :owner',
-      FilterExpression: '#subj = :subject AND createdAt > :minTime',
+      FilterExpression: 'ownerEmail = :owner AND #subj = :subject AND #from.#email = :fromEmail AND createdAt > :minTime',
       ExpressionAttributeNames: {
-        '#subj': 'subject', // subject is a reserved word in DynamoDB
+        '#subj': 'subject',
+        '#from': 'from',
+        '#email': 'email',
       },
       ExpressionAttributeValues: {
         ':owner': '__admin__',
         ':subject': subject,
+        ':fromEmail': fromEmail.toLowerCase(),
         ':minTime': fiveMinutesAgo,
       },
-      ScanIndexForward: false, // Most recent first
-      Limit: 50, // Check recent admin emails
-      ConsistentRead: false, // GSI doesn't support ConsistentRead, but Query is more reliable
+      Limit: 100,
     });
 
     const response = await docClient.send(command);
-    console.log('Duplicate check query result:', { itemCount: response.Items?.length || 0, subject, fromEmail });
+    console.log('Duplicate check scan result:', { itemCount: response.Items?.length || 0, subject, fromEmail });
     if (response.Items && response.Items.length > 0) {
-      const hasDuplicate = response.Items.some(item =>
-        item.from?.email?.toLowerCase() === fromEmail.toLowerCase()
-      );
-      if (hasDuplicate) {
-        console.log('Admin duplicate found by subject+sender:', { subject, fromEmail });
-        return true;
-      }
+      console.log('Admin duplicate found by subject+sender:', { subject, fromEmail });
+      return true;
     }
     return false;
   } catch (error) {
@@ -630,16 +623,25 @@ export const handleIncoming = async (event) => {
       }
     }
 
-    // Check if sender is an employee - if so, skip admin copy creation
-    // because the employee send handler already creates the admin inbox copy
+    // Determine if we should create an admin inbox copy
+    // Skip if:
+    // 1. Sender is an employee (employee handler creates admin copy)
+    // 2. Recipients include employees (admin already has the sent copy, employees get their own copies)
     const senderIsEmployee = await getEmployeeByEmail(fromParsed.email);
     let adminEmailId = null;
+    let adminDuplicateExists = false;
 
     if (senderIsEmployee) {
       console.log('Sender is employee, skipping admin copy (employee handler creates it):', fromParsed.email);
+      adminDuplicateExists = true;
+    } else if (matchingEmployees.length > 0) {
+      // Email is TO employees - admin already has sent copy, don't create inbox copy
+      console.log('Email is to employees, skipping admin inbox copy (admin has sent copy)');
+      adminDuplicateExists = true;
     } else {
+      // Email is from external sender to admin - create admin inbox copy
       // Check if admin copy already exists (webhook may be called multiple times)
-      const adminDuplicateExists = await checkAdminDuplicate(messageId, subject, fromParsed.email);
+      adminDuplicateExists = await checkAdminDuplicate(messageId, subject, fromParsed.email);
 
       if (adminDuplicateExists) {
         console.log('Skipping duplicate admin email for messageId:', messageId);
@@ -654,6 +656,7 @@ export const handleIncoming = async (event) => {
 
         await putItem(EMAILS_TABLE, adminEmailRecord);
         adminEmailId = adminEmailRecord.id;
+        console.log('Created admin inbox copy:', adminEmailId);
       }
     }
 
