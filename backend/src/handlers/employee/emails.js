@@ -403,12 +403,12 @@ export const sendEmail = async (event) => {
 
     if (adminRecipients.length > 0) {
       // Create inbound copy for admin panel
-      // Don't set ownerEmail so it shows up in admin panel (DirectionIndex query with filtering)
+      // Use special marker value for admin emails (DynamoDB GSI requires a string value)
       const adminInboundEmail = {
         id: uuidv4(),
         threadId,
         direction: 'inbound',
-        // ownerEmail intentionally omitted so admin panel sees it via DirectionIndex
+        ownerEmail: '__admin__', // Special marker for admin panel emails
         from: { email: employee.email, name: employee.name },
         to: toRecipients.map(email => ({ email, name: email.split('@')[0] })),
         cc: ccRecipients.map(email => ({ email, name: email.split('@')[0] })),

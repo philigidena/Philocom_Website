@@ -375,18 +375,17 @@ const findMatchingEmployees = async (emailAddresses) => {
  * Used to prevent duplicate emails when webhook is triggered for internal emails
  */
 const emailExistsForOwner = async (messageId, ownerEmail) => {
-  if (!messageId) return false;
+  if (!messageId || !ownerEmail) return false;
 
   try {
     // Scan for emails with matching messageId and ownerEmail
     // This is a simple deduplication check
     const command = new ScanCommand({
       TableName: EMAILS_TABLE,
-      FilterExpression: 'messageId = :messageId AND (ownerEmail = :ownerEmail OR (attribute_not_exists(ownerEmail) AND :ownerEmail = :nullVal))',
+      FilterExpression: 'messageId = :messageId AND ownerEmail = :ownerEmail',
       ExpressionAttributeValues: {
         ':messageId': messageId,
-        ':ownerEmail': ownerEmail || null,
-        ':nullVal': null,
+        ':ownerEmail': ownerEmail,
       },
       Limit: 1,
     });
@@ -584,18 +583,18 @@ export const handleIncoming = async (event) => {
     }
 
     // Check if admin copy already exists (in case it was created by employee send)
-    const adminDuplicateExists = await checkForDuplicateEmail(messageId, null);
+    const adminDuplicateExists = await checkForDuplicateEmail(messageId, '__admin__');
     let adminEmailId = null;
 
     if (adminDuplicateExists) {
       console.log('Skipping duplicate admin email for messageId:', messageId);
     } else {
-      // Create a master record without ownerEmail for admin panel
-      // (so admins can see all emails)
+      // Create a master record for admin panel
+      // Use special marker value (DynamoDB GSI requires a string value)
       const adminEmailRecord = {
         ...baseEmailRecord,
         id: uuidv4(),
-        // ownerEmail intentionally omitted so admin panel sees it
+        ownerEmail: '__admin__', // Special marker for admin panel emails
       };
 
       await putItem(EMAILS_TABLE, adminEmailRecord);
