@@ -24,6 +24,9 @@ const COMPANY_NAME = 'Philocom';
 const COMPANY_WEBSITE = 'https://philocom.co';
 const COMPANY_ADDRESS = 'Addis Ababa, Ethiopia';
 
+// Admin email addresses - emails to these will also be stored in admin inbox
+const ADMIN_EMAIL_ADDRESSES = ['info@philocom.co', 'support@philocom.co', 'admin@philocom.co', 'noreply@philocom.co'];
+
 const ssmClient = new SSMClient({ region: process.env.AWS_REGION || 'eu-central-1' });
 const dynamoClient = new DynamoDBClient({ region: process.env.AWS_REGION || 'eu-central-1' });
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
@@ -390,6 +393,42 @@ export const sendEmail = async (event) => {
 
     await putItem(EMAILS_TABLE, sentEmail);
 
+    // Check if any recipient is an admin email address
+    // If so, also create an inbound copy for the admin panel
+    // (Resend may not trigger webhook for internal emails)
+    const allRecipients = [...toRecipients, ...ccRecipients];
+    const adminRecipients = allRecipients.filter(email =>
+      ADMIN_EMAIL_ADDRESSES.includes(email.toLowerCase())
+    );
+
+    if (adminRecipients.length > 0) {
+      // Create inbound copy for admin panel (with ownerEmail = null so admins see it)
+      const adminInboundEmail = {
+        id: uuidv4(),
+        threadId,
+        direction: 'inbound',
+        ownerEmail: null, // null means it's visible in admin panel
+        from: { email: employee.email, name: employee.name },
+        to: toRecipients.map(email => ({ email, name: email.split('@')[0] })),
+        cc: ccRecipients.map(email => ({ email, name: email.split('@')[0] })),
+        subject: emailData.subject,
+        body: templatedBody,
+        bodyText: emailData.bodyText,
+        status: 'received',
+        isRead: false,
+        isStarred: false,
+        labels: ['internal'],
+        messageId: `internal-${resendResponse.id}`,
+        inReplyTo: data.inReplyTo || null,
+        sentBy: employee.id,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      };
+
+      await putItem(EMAILS_TABLE, adminInboundEmail);
+      console.log('Created inbound copy for admin panel:', adminInboundEmail.id);
+    }
+
     // Update contact's lastContactedAt
     for (const recipient of toRecipients) {
       try {
@@ -410,6 +449,7 @@ export const sendEmail = async (event) => {
       message: 'Email sent successfully',
       emailId: sentEmail.id,
       resendId: resendResponse.id,
+      adminCopy: adminRecipients.length > 0,
     }, 201);
 
   } catch (error) {
