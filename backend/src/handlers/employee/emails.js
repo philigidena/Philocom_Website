@@ -353,6 +353,19 @@ export const sendEmail = async (event) => {
     const toRecipients = Array.isArray(data.to) ? data.to : [data.to];
     const ccRecipients = data.cc ? (Array.isArray(data.cc) ? data.cc : [data.cc]) : [];
 
+    // Validate email format for all recipients
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    for (const email of toRecipients) {
+      if (!emailRegex.test(email)) {
+        return validationErrorResponse([`Invalid email address: ${email}`]);
+      }
+    }
+    for (const email of ccRecipients) {
+      if (!emailRegex.test(email)) {
+        return validationErrorResponse([`Invalid CC email address: ${email}`]);
+      }
+    }
+
     const threadId = generateThreadId(data.subject, data.inReplyTo);
 
     const emailData = {
