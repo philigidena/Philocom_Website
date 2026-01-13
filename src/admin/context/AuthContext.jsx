@@ -13,9 +13,10 @@ import {
 const AuthContext = createContext(null);
 
 // Cognito configuration from environment
+// Fallback to hardcoded values for production
 const poolData = {
-  UserPoolId: import.meta.env.VITE_COGNITO_USER_POOL_ID || '',
-  ClientId: import.meta.env.VITE_COGNITO_CLIENT_ID || '',
+  UserPoolId: import.meta.env.VITE_COGNITO_USER_POOL_ID || 'eu-central-1_eSUvnW76G',
+  ClientId: import.meta.env.VITE_COGNITO_CLIENT_ID || '1t4c2ju4qme96kfr2d6qa7rh1s',
 };
 
 const userPool = poolData.UserPoolId && poolData.ClientId
