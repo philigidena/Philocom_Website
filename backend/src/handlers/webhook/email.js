@@ -423,11 +423,13 @@ const checkAdminDuplicate = async (messageId, subject, fromEmail) => {
 
     // Always check by subject and sender within recent timeframe
     // This catches cases where messageIds don't match
-    // Use ConsistentRead to ensure we see recently created items (avoids race condition)
+    // Use QueryCommand with OwnerEmailIndex for efficiency (Scan with Limit is unreliable)
     const fiveMinutesAgo = Date.now() - (5 * 60 * 1000);
-    const command = new ScanCommand({
+    const command = new QueryCommand({
       TableName: EMAILS_TABLE,
-      FilterExpression: 'ownerEmail = :owner AND #subj = :subject AND createdAt > :minTime',
+      IndexName: 'OwnerEmailIndex',
+      KeyConditionExpression: 'ownerEmail = :owner',
+      FilterExpression: '#subj = :subject AND createdAt > :minTime',
       ExpressionAttributeNames: {
         '#subj': 'subject', // subject is a reserved word in DynamoDB
       },
@@ -436,11 +438,13 @@ const checkAdminDuplicate = async (messageId, subject, fromEmail) => {
         ':subject': subject,
         ':minTime': fiveMinutesAgo,
       },
-      Limit: 10,
-      ConsistentRead: true, // CRITICAL: Avoid race condition with recently created items
+      ScanIndexForward: false, // Most recent first
+      Limit: 50, // Check recent admin emails
+      ConsistentRead: false, // GSI doesn't support ConsistentRead, but Query is more reliable
     });
 
     const response = await docClient.send(command);
+    console.log('Duplicate check query result:', { itemCount: response.Items?.length || 0, subject, fromEmail });
     if (response.Items && response.Items.length > 0) {
       const hasDuplicate = response.Items.some(item =>
         item.from?.email?.toLowerCase() === fromEmail.toLowerCase()
@@ -626,24 +630,31 @@ export const handleIncoming = async (event) => {
       }
     }
 
-    // Check if admin copy already exists (webhook may be called multiple times,
-    // or employee may have already sent to admin creating an internal copy)
-    const adminDuplicateExists = await checkAdminDuplicate(messageId, subject, fromParsed.email);
+    // Check if sender is an employee - if so, skip admin copy creation
+    // because the employee send handler already creates the admin inbox copy
+    const senderIsEmployee = await getEmployeeByEmail(fromParsed.email);
     let adminEmailId = null;
 
-    if (adminDuplicateExists) {
-      console.log('Skipping duplicate admin email for messageId:', messageId);
+    if (senderIsEmployee) {
+      console.log('Sender is employee, skipping admin copy (employee handler creates it):', fromParsed.email);
     } else {
-      // Create a master record for admin panel
-      // Use special marker value (DynamoDB GSI requires a string value)
-      const adminEmailRecord = {
-        ...baseEmailRecord,
-        id: uuidv4(),
-        ownerEmail: '__admin__', // Special marker for admin panel emails
-      };
+      // Check if admin copy already exists (webhook may be called multiple times)
+      const adminDuplicateExists = await checkAdminDuplicate(messageId, subject, fromParsed.email);
 
-      await putItem(EMAILS_TABLE, adminEmailRecord);
-      adminEmailId = adminEmailRecord.id;
+      if (adminDuplicateExists) {
+        console.log('Skipping duplicate admin email for messageId:', messageId);
+      } else {
+        // Create a master record for admin panel
+        // Use special marker value (DynamoDB GSI requires a string value)
+        const adminEmailRecord = {
+          ...baseEmailRecord,
+          id: uuidv4(),
+          ownerEmail: '__admin__', // Special marker for admin panel emails
+        };
+
+        await putItem(EMAILS_TABLE, adminEmailRecord);
+        adminEmailId = adminEmailRecord.id;
+      }
     }
 
     // Update or create contact record
