@@ -371,46 +371,41 @@ const findMatchingEmployees = async (emailAddresses) => {
 };
 
 /**
- * Check if an email with this messageId already exists for a specific owner
+ * Check if an email already exists for a specific owner based on content
  * Used to prevent duplicate emails when webhook is triggered for internal emails
+ * Checks based on subject, sender, and timestamp (within 5 minute window)
  */
-const emailExistsForOwner = async (messageId, ownerEmail) => {
-  if (!messageId || !ownerEmail) return false;
+const checkDuplicateByContent = async (subject, fromEmail, ownerEmail, timestamp) => {
+  if (!subject || !fromEmail || !ownerEmail) return false;
 
   try {
-    // Scan for emails with matching messageId and ownerEmail
-    // This is a simple deduplication check
+    // Check for emails with same subject, sender, and ownerEmail within 5 minutes
+    const fiveMinutesAgo = timestamp - (5 * 60 * 1000);
+
     const command = new ScanCommand({
       TableName: EMAILS_TABLE,
-      FilterExpression: 'messageId = :messageId AND ownerEmail = :ownerEmail',
+      FilterExpression: 'subject = :subject AND ownerEmail = :ownerEmail AND createdAt > :minTime',
       ExpressionAttributeValues: {
-        ':messageId': messageId,
+        ':subject': subject,
         ':ownerEmail': ownerEmail,
+        ':minTime': fiveMinutesAgo,
       },
-      Limit: 1,
+      Limit: 10,
     });
 
     const response = await docClient.send(command);
-    return response.Items && response.Items.length > 0;
+
+    // Check if any of the found emails match the sender
+    if (response.Items && response.Items.length > 0) {
+      return response.Items.some(item =>
+        item.from?.email?.toLowerCase() === fromEmail.toLowerCase()
+      );
+    }
+    return false;
   } catch (error) {
     console.error('Error checking for duplicate email:', error);
     return false;
   }
-};
-
-/**
- * Check if an email with this messageId or internal-prefixed version already exists
- */
-const checkForDuplicateEmail = async (messageId, ownerEmail) => {
-  if (!messageId) return false;
-
-  // Check for both the original messageId and internal-prefixed version
-  const exists = await emailExistsForOwner(messageId, ownerEmail);
-  if (exists) return true;
-
-  // Also check for internal- prefix (added when employee sends to admin)
-  const internalExists = await emailExistsForOwner(`internal-${messageId}`, ownerEmail);
-  return internalExists;
 };
 
 /**
@@ -561,12 +556,13 @@ export const handleIncoming = async (event) => {
     // This ensures each employee has their own copy in their inbox
     // But first check for duplicates (in case employee already sent this email internally)
     let employeeCopiesCreated = 0;
+    const currentTime = Date.now();
     if (matchingEmployees.length > 0) {
       for (const employee of matchingEmployees) {
-        // Check if this email already exists for this employee (deduplication)
-        const isDuplicate = await checkForDuplicateEmail(messageId, employee.email.toLowerCase());
+        // Check if this email already exists for this employee (deduplication by content)
+        const isDuplicate = await checkDuplicateByContent(subject, fromParsed.email, employee.email.toLowerCase(), currentTime);
         if (isDuplicate) {
-          console.log('Skipping duplicate email for employee:', employee.email, messageId);
+          console.log('Skipping duplicate email for employee:', employee.email, subject);
           continue;
         }
 
@@ -583,7 +579,7 @@ export const handleIncoming = async (event) => {
     }
 
     // Check if admin copy already exists (in case it was created by employee send)
-    const adminDuplicateExists = await checkForDuplicateEmail(messageId, '__admin__');
+    const adminDuplicateExists = await checkDuplicateByContent(subject, fromParsed.email, '__admin__', currentTime);
     let adminEmailId = null;
 
     if (adminDuplicateExists) {
