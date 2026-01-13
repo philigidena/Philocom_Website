@@ -401,32 +401,51 @@ const checkDuplicateByMessageId = async (messageId, ownerEmail) => {
  * This handles the case where employee sends to admin and we create internal-{id} copy
  */
 const checkAdminDuplicate = async (messageId, subject, fromEmail) => {
-  if (!messageId) return false;
+  if (!subject || !fromEmail) return false;
 
   try {
     // First check for exact messageId match
-    const exactMatch = await checkDuplicateByMessageId(messageId, '__admin__');
-    if (exactMatch) return true;
+    if (messageId) {
+      const exactMatch = await checkDuplicateByMessageId(messageId, '__admin__');
+      if (exactMatch) {
+        console.log('Admin duplicate found by exact messageId:', messageId);
+        return true;
+      }
 
-    // Check for internal- prefix (when employee sends to admin via the app)
-    // In this case, we need to check by subject and sender within recent timeframe
+      // Check for internal-{messageId} prefix (when employee sends to admin via the app)
+      const internalMatch = await checkDuplicateByMessageId(`internal-${messageId}`, '__admin__');
+      if (internalMatch) {
+        console.log('Admin duplicate found by internal- prefix:', messageId);
+        return true;
+      }
+    }
+
+    // Always check by subject and sender within recent timeframe
+    // This catches cases where messageIds don't match
     const fiveMinutesAgo = Date.now() - (5 * 60 * 1000);
     const command = new ScanCommand({
       TableName: EMAILS_TABLE,
-      FilterExpression: 'ownerEmail = :owner AND subject = :subject AND createdAt > :minTime',
+      FilterExpression: 'ownerEmail = :owner AND #subj = :subject AND createdAt > :minTime',
+      ExpressionAttributeNames: {
+        '#subj': 'subject', // subject is a reserved word in DynamoDB
+      },
       ExpressionAttributeValues: {
         ':owner': '__admin__',
         ':subject': subject,
         ':minTime': fiveMinutesAgo,
       },
-      Limit: 5,
+      Limit: 10,
     });
 
     const response = await docClient.send(command);
     if (response.Items && response.Items.length > 0) {
-      return response.Items.some(item =>
+      const hasDuplicate = response.Items.some(item =>
         item.from?.email?.toLowerCase() === fromEmail.toLowerCase()
       );
+      if (hasDuplicate) {
+        console.log('Admin duplicate found by subject+sender:', { subject, fromEmail });
+        return true;
+      }
     }
     return false;
   } catch (error) {

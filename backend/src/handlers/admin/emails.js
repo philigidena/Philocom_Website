@@ -378,6 +378,7 @@ export const sendEmail = async (event) => {
       id: uuidv4(),
       threadId,
       direction: 'outbound',
+      ownerEmail: '__admin__', // Mark as admin email for proper filtering
       from: { email: SENDER_EMAIL, name: 'Philocom' },
       to: toRecipients.map(email => ({ email, name: email.split('@')[0] })),
       cc: ccRecipients.map(email => ({ email, name: email.split('@')[0] })),
