@@ -198,15 +198,30 @@ const generateThreadId = (subject, inReplyTo = null) => {
   return `thread_${Buffer.from(normalizedSubject).toString('base64').slice(0, 32)}`;
 };
 
+// Admin email addresses - only emails from/to these addresses are shown in admin panel
+const ADMIN_EMAIL_ADDRESSES = ['info@philocom.co', 'support@philocom.co', 'admin@philocom.co', 'noreply@philocom.co'];
+
 /**
  * GET /admin/emails - Get all emails (inbox view)
  * Query params: direction=inbound|outbound, limit, lastKey
+ *
+ * For admin panel:
+ * - Inbox (inbound): Shows emails where ownerEmail is null (not employee-specific)
+ *   or where recipient is one of the admin emails
+ * - Sent (outbound): Shows only emails sent FROM admin email addresses
  */
 export const getEmails = async (event) => {
   try {
     const queryParams = event.queryStringParameters || {};
     const direction = queryParams.direction || 'inbound';
     const limit = parseInt(queryParams.limit) || 50;
+
+    // Use QueryCommand directly for index query
+    const { DynamoDBClient } = await import('@aws-sdk/client-dynamodb');
+    const { DynamoDBDocumentClient, QueryCommand } = await import('@aws-sdk/lib-dynamodb');
+
+    const client = new DynamoDBClient({ region: process.env.AWS_REGION || 'eu-central-1' });
+    const docClient = DynamoDBDocumentClient.from(client);
 
     // Query by direction using GSI
     const params = {
@@ -217,22 +232,41 @@ export const getEmails = async (event) => {
         ':direction': direction,
       },
       ScanIndexForward: false, // Most recent first
-      Limit: limit,
+      Limit: limit * 3, // Fetch more to account for filtering
     };
-
-    // Use QueryCommand directly for index query
-    const { DynamoDBClient } = await import('@aws-sdk/client-dynamodb');
-    const { DynamoDBDocumentClient, QueryCommand } = await import('@aws-sdk/lib-dynamodb');
-
-    const client = new DynamoDBClient({ region: process.env.AWS_REGION || 'eu-central-1' });
-    const docClient = DynamoDBDocumentClient.from(client);
 
     const command = new QueryCommand(params);
     const response = await docClient.send(command);
 
+    let filteredEmails = response.Items || [];
+
+    if (direction === 'inbound') {
+      // For inbox: show emails where ownerEmail is null (admin emails)
+      // or where one of the recipients is an admin email
+      filteredEmails = filteredEmails.filter(email => {
+        // Show if ownerEmail is null (master record for admins)
+        if (!email.ownerEmail) return true;
+
+        // Also show if any recipient is an admin email address
+        const toEmails = (email.to || []).map(t => t.email?.toLowerCase());
+        const ccEmails = (email.cc || []).map(c => c.email?.toLowerCase());
+        const allRecipients = [...toEmails, ...ccEmails];
+        return allRecipients.some(r => ADMIN_EMAIL_ADDRESSES.includes(r));
+      });
+    } else if (direction === 'outbound') {
+      // For sent: only show emails sent FROM admin email addresses
+      filteredEmails = filteredEmails.filter(email => {
+        const fromEmail = email.from?.email?.toLowerCase();
+        return ADMIN_EMAIL_ADDRESSES.includes(fromEmail);
+      });
+    }
+
+    // Limit to requested count after filtering
+    filteredEmails = filteredEmails.slice(0, limit);
+
     return successResponse({
-      emails: response.Items || [],
-      count: response.Count,
+      emails: filteredEmails,
+      count: filteredEmails.length,
       lastKey: response.LastEvaluatedKey,
     });
 
