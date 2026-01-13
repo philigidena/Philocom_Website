@@ -244,26 +244,16 @@ export const getEmails = async (event) => {
     let filteredEmails = response.Items || [];
 
     if (direction === 'inbound') {
-      // For inbox: show emails where ownerEmail is '__admin__' (admin panel emails)
-      // or where one of the recipients is an admin email address
+      // For inbox: ONLY show emails where ownerEmail is '__admin__'
+      // Employee emails have their own ownerEmail and should not appear here
       filteredEmails = filteredEmails.filter(email => {
-        // Show if ownerEmail is '__admin__' (master record for admin panel)
-        if (email.ownerEmail === '__admin__') return true;
-
-        // Also show if any recipient is an admin email address (for legacy data)
-        const toEmails = (email.to || []).map(t => t.email?.toLowerCase());
-        const ccEmails = (email.cc || []).map(c => c.email?.toLowerCase());
-        const allRecipients = [...toEmails, ...ccEmails];
-        return allRecipients.some(r => ADMIN_EMAIL_ADDRESSES.includes(r));
+        return email.ownerEmail === '__admin__';
       });
     } else if (direction === 'outbound') {
-      // For sent: only show emails sent FROM admin email addresses (not employee emails)
+      // For sent: ONLY show emails where ownerEmail is '__admin__' or not set (legacy)
+      // This excludes employee sent emails which have ownerEmail = employee's email
       filteredEmails = filteredEmails.filter(email => {
-        const fromEmail = email.from?.email?.toLowerCase();
-        // Must be from an admin address AND either have __admin__ ownerEmail or no ownerEmail (legacy)
-        const isFromAdmin = ADMIN_EMAIL_ADDRESSES.includes(fromEmail);
-        const isAdminOwned = email.ownerEmail === '__admin__' || !email.ownerEmail;
-        return isFromAdmin && isAdminOwned;
+        return email.ownerEmail === '__admin__' || !email.ownerEmail;
       });
     }
 
