@@ -73,10 +73,18 @@ export default function EmailCompose() {
   const fetchReplyToEmail = async (id) => {
     try {
       const token = await getIdToken();
+      const headers = {
+        'Content-Type': 'application/json',
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      if (employee?.email) {
+        headers['X-Employee-Email'] = employee.email;
+      }
+
       const response = await fetch(`${API_URL}/employee/emails/${id}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers,
       });
 
       if (response.ok) {
@@ -135,12 +143,19 @@ export default function EmailCompose() {
         inReplyTo: replyToEmail?.messageId || null,
       };
 
+      const headers = {
+        'Content-Type': 'application/json',
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      if (employee?.email) {
+        headers['X-Employee-Email'] = employee.email;
+      }
+
       const response = await fetch(`${API_URL}/employee/emails/send`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers,
         body: JSON.stringify(emailData),
       });
 

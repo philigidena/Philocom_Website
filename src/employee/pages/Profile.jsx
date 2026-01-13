@@ -39,10 +39,18 @@ export default function Profile() {
 
     try {
       const token = await getIdToken();
+      const headers = {
+        'Content-Type': 'application/json',
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      if (employee?.email) {
+        headers['X-Employee-Email'] = employee.email;
+      }
+
       const response = await fetch(`${API_URL}/employee/profile`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers,
       });
 
       if (!response.ok) throw new Error('Failed to fetch profile');

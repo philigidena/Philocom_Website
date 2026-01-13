@@ -27,7 +27,7 @@ export default function Projects() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedProject, setSelectedProject] = useState(null);
 
-  const { getIdToken } = useEmployeeAuth();
+  const { getIdToken, employee } = useEmployeeAuth();
 
   useEffect(() => {
     fetchProjects();
@@ -39,10 +39,18 @@ export default function Projects() {
 
     try {
       const token = await getIdToken();
+      const headers = {
+        'Content-Type': 'application/json',
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      if (employee?.email) {
+        headers['X-Employee-Email'] = employee.email;
+      }
+
       const response = await fetch(`${API_URL}/employee/projects`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers,
       });
 
       if (!response.ok) throw new Error('Failed to fetch projects');

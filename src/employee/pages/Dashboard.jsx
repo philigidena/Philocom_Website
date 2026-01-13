@@ -40,12 +40,19 @@ export default function Dashboard() {
 
     try {
       const token = await getIdToken();
+      const headers = {
+        'Content-Type': 'application/json',
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      if (employee?.email) {
+        headers['X-Employee-Email'] = employee.email;
+      }
 
       // Fetch profile with stats
       const profileResponse = await fetch(`${API_URL}/employee/profile`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers,
       });
 
       if (profileResponse.ok) {
@@ -55,9 +62,7 @@ export default function Dashboard() {
 
       // Fetch recent emails
       const emailsResponse = await fetch(`${API_URL}/employee/emails?limit=5`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers,
       });
 
       if (emailsResponse.ok) {

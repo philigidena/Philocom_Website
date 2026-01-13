@@ -59,13 +59,19 @@ export default function EmailInbox() {
 
     try {
       const token = await getIdToken();
+      const headers = {
+        'Content-Type': 'application/json',
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      if (employee?.email) {
+        headers['X-Employee-Email'] = employee.email;
+      }
+
       const response = await fetch(
         `${API_URL}/employee/emails?direction=${activeTab}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+        { headers }
       );
 
       if (!response.ok) {
@@ -86,10 +92,18 @@ export default function EmailInbox() {
   const fetchEmail = async (id) => {
     try {
       const token = await getIdToken();
+      const headers = {
+        'Content-Type': 'application/json',
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      if (employee?.email) {
+        headers['X-Employee-Email'] = employee.email;
+      }
+
       const response = await fetch(`${API_URL}/employee/emails/${id}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers,
       });
 
       if (!response.ok) {

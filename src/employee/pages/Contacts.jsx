@@ -28,7 +28,7 @@ export default function Contacts() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedContact, setSelectedContact] = useState(null);
 
-  const { getIdToken } = useEmployeeAuth();
+  const { getIdToken, employee } = useEmployeeAuth();
 
   useEffect(() => {
     fetchContacts();
@@ -40,10 +40,18 @@ export default function Contacts() {
 
     try {
       const token = await getIdToken();
+      const headers = {
+        'Content-Type': 'application/json',
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      if (employee?.email) {
+        headers['X-Employee-Email'] = employee.email;
+      }
+
       const response = await fetch(`${API_URL}/employee/contacts`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers,
       });
 
       if (!response.ok) throw new Error('Failed to fetch contacts');

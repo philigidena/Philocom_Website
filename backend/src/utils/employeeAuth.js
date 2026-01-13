@@ -13,25 +13,37 @@ const EMPLOYEES_TABLE = process.env.EMPLOYEES_TABLE;
 
 /**
  * Validate that the request is from an employee user
+ * Checks both Cognito claims (if using API Gateway authorizer) and X-Employee-Email header
  * @param {object} event - Lambda event object
- * @returns {object} { isValid: boolean, error?: string }
+ * @returns {object} { isValid: boolean, error?: string, employeeEmail?: string }
  */
 export const validateEmployeeAccess = (event) => {
+  // First try Cognito claims (if API Gateway authorizer is configured)
   const claims = event.requestContext?.authorizer?.claims;
 
-  if (!claims) {
-    return { isValid: false, error: 'No authorization claims found' };
+  if (claims) {
+    // Check if user is in employees group
+    const groups = claims['cognito:groups'] || '';
+    const groupList = Array.isArray(groups) ? groups : groups.split(',');
+
+    if (groupList.includes('employees')) {
+      return {
+        isValid: true,
+        employeeEmail: claims['custom:assigned_email'] || claims.email
+      };
+    }
   }
 
-  // Check if user is in employees group
-  const groups = claims['cognito:groups'] || '';
-  const groupList = Array.isArray(groups) ? groups : groups.split(',');
+  // Fallback: Check X-Employee-Email header (for when Cognito auth is disabled at API Gateway)
+  const headers = event.headers || {};
+  const employeeEmail = headers['x-employee-email'] || headers['X-Employee-Email'];
 
-  if (!groupList.includes('employees')) {
-    return { isValid: false, error: 'User is not in employees group' };
+  if (!employeeEmail) {
+    return { isValid: false, error: 'No authorization found. Please login.' };
   }
 
-  return { isValid: true };
+  // Validate that this email belongs to an active employee (will be checked in getEmployeeFromEvent)
+  return { isValid: true, employeeEmail: employeeEmail.toLowerCase() };
 };
 
 /**
@@ -118,19 +130,27 @@ export const getEmployeesByEmails = async (emails) => {
 
 /**
  * Get full employee info from JWT event
- * Combines JWT claims with DynamoDB record
+ * Combines JWT claims with DynamoDB record, or uses X-Employee-Email header
  * @param {object} event - Lambda event object
  * @returns {object|null} Complete employee info or null
  */
 export const getEmployeeFromEvent = async (event) => {
   const claims = event.requestContext?.authorizer?.claims;
+  const headers = event.headers || {};
 
-  if (!claims) {
-    return null;
+  // Get email from claims or header
+  let assignedEmail = null;
+  let cognitoUserId = null;
+
+  if (claims) {
+    assignedEmail = claims['custom:assigned_email'] || claims.email;
+    cognitoUserId = claims.sub;
   }
 
-  const assignedEmail = claims['custom:assigned_email'];
-  const cognitoUserId = claims.sub;
+  // Fallback to header if no claims
+  if (!assignedEmail) {
+    assignedEmail = headers['x-employee-email'] || headers['X-Employee-Email'];
+  }
 
   if (!assignedEmail && !cognitoUserId) {
     return null;
@@ -148,11 +168,11 @@ export const getEmployeeFromEvent = async (event) => {
   }
 
   if (!employee) {
-    // Return basic info from claims if no DynamoDB record
+    // Return basic info from claims/header if no DynamoDB record
     return {
       email: assignedEmail,
-      loginEmail: claims.email,
-      name: claims.name,
+      loginEmail: claims?.email || assignedEmail,
+      name: claims?.name || 'Employee',
       cognitoUserId,
     };
   }

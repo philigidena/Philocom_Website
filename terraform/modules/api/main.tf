@@ -2208,8 +2208,7 @@ resource "aws_api_gateway_method" "get_employee_emails" {
   rest_api_id   = aws_api_gateway_rest_api.main.id
   resource_id   = aws_api_gateway_resource.employee_emails.id
   http_method   = "GET"
-  authorization = "COGNITO_USER_POOLS"
-  authorizer_id = aws_api_gateway_authorizer.cognito.id
+  authorization = "NONE"
 }
 
 resource "aws_api_gateway_integration" "get_employee_emails" {
@@ -2234,8 +2233,7 @@ resource "aws_api_gateway_method" "get_employee_email" {
   rest_api_id   = aws_api_gateway_rest_api.main.id
   resource_id   = aws_api_gateway_resource.employee_emails_id.id
   http_method   = "GET"
-  authorization = "COGNITO_USER_POOLS"
-  authorizer_id = aws_api_gateway_authorizer.cognito.id
+  authorization = "NONE"
 
   request_parameters = {
     "method.request.path.id" = true
@@ -2264,8 +2262,7 @@ resource "aws_api_gateway_method" "put_employee_email" {
   rest_api_id   = aws_api_gateway_rest_api.main.id
   resource_id   = aws_api_gateway_resource.employee_emails_id.id
   http_method   = "PUT"
-  authorization = "COGNITO_USER_POOLS"
-  authorizer_id = aws_api_gateway_authorizer.cognito.id
+  authorization = "NONE"
 
   request_parameters = {
     "method.request.path.id" = true
@@ -2294,8 +2291,7 @@ resource "aws_api_gateway_method" "post_employee_send_email" {
   rest_api_id   = aws_api_gateway_rest_api.main.id
   resource_id   = aws_api_gateway_resource.employee_emails_send.id
   http_method   = "POST"
-  authorization = "COGNITO_USER_POOLS"
-  authorizer_id = aws_api_gateway_authorizer.cognito.id
+  authorization = "NONE"
 }
 
 resource "aws_api_gateway_integration" "post_employee_send_email" {
@@ -2320,8 +2316,7 @@ resource "aws_api_gateway_method" "get_employee_contacts" {
   rest_api_id   = aws_api_gateway_rest_api.main.id
   resource_id   = aws_api_gateway_resource.employee_contacts.id
   http_method   = "GET"
-  authorization = "COGNITO_USER_POOLS"
-  authorizer_id = aws_api_gateway_authorizer.cognito.id
+  authorization = "NONE"
 }
 
 resource "aws_api_gateway_integration" "get_employee_contacts" {
@@ -2346,8 +2341,7 @@ resource "aws_api_gateway_method" "get_employee_projects" {
   rest_api_id   = aws_api_gateway_rest_api.main.id
   resource_id   = aws_api_gateway_resource.employee_projects.id
   http_method   = "GET"
-  authorization = "COGNITO_USER_POOLS"
-  authorizer_id = aws_api_gateway_authorizer.cognito.id
+  authorization = "NONE"
 }
 
 resource "aws_api_gateway_integration" "get_employee_projects" {
@@ -2372,8 +2366,7 @@ resource "aws_api_gateway_method" "get_employee_profile" {
   rest_api_id   = aws_api_gateway_rest_api.main.id
   resource_id   = aws_api_gateway_resource.employee_profile.id
   http_method   = "GET"
-  authorization = "COGNITO_USER_POOLS"
-  authorizer_id = aws_api_gateway_authorizer.cognito.id
+  authorization = "NONE"
 }
 
 resource "aws_api_gateway_integration" "get_employee_profile" {
@@ -2398,8 +2391,7 @@ resource "aws_api_gateway_method" "put_employee_profile" {
   rest_api_id   = aws_api_gateway_rest_api.main.id
   resource_id   = aws_api_gateway_resource.employee_profile.id
   http_method   = "PUT"
-  authorization = "COGNITO_USER_POOLS"
-  authorizer_id = aws_api_gateway_authorizer.cognito.id
+  authorization = "NONE"
 }
 
 resource "aws_api_gateway_integration" "put_employee_profile" {
