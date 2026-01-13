@@ -70,10 +70,36 @@ export function EmployeeAuthProvider({ children }) {
           setEmployee(null);
           setIsLoading(false);
         } else if (session.isValid()) {
+          // Get groups from the ID token payload (not from getUserAttributes)
+          const idToken = session.getIdToken();
+          const tokenPayload = idToken.decodePayload();
+          const groups = tokenPayload['cognito:groups'] || [];
+
+          // Check if user is in employees group
+          if (!groups.includes('employees')) {
+            // Not an employee - logout
+            cognitoUser.signOut();
+            setUser(null);
+            setEmployee(null);
+            setError('You do not have access to the employee panel');
+            setIsLoading(false);
+            return;
+          }
+
           cognitoUser.getUserAttributes((err, attributes) => {
             if (err) {
               console.error('Get attributes error:', err);
-              setUser({ email: cognitoUser.getUsername() });
+              // Still set user since we verified they're in the employees group
+              const userData = {
+                email: cognitoUser.getUsername(),
+                name: 'Employee',
+              };
+              setUser(userData);
+              setEmployee({
+                email: userData.email, // Company email is the username
+                name: userData.name,
+                loginEmail: userData.email,
+              });
               setIsLoading(false);
             } else {
               const userAttrs = {};
@@ -81,30 +107,16 @@ export function EmployeeAuthProvider({ children }) {
                 userAttrs[attr.getName()] = attr.getValue();
               });
 
-              // Check if user is in employees group
-              const groups = userAttrs['cognito:groups'] || '';
-              const groupList = Array.isArray(groups) ? groups : groups.split(',');
-
-              if (!groupList.includes('employees')) {
-                // Not an employee - logout
-                cognitoUser.signOut();
-                setUser(null);
-                setEmployee(null);
-                setError('You do not have access to the employee panel');
-                setIsLoading(false);
-                return;
-              }
-
               const userData = {
                 email: userAttrs.email || cognitoUser.getUsername(),
                 name: userAttrs.name || 'Employee',
-                assignedEmail: userAttrs['custom:assigned_email'],
+                assignedEmail: userAttrs['custom:assigned_email'] || userAttrs.email || cognitoUser.getUsername(),
                 ...userAttrs,
               };
 
               setUser(userData);
               setEmployee({
-                email: userData.assignedEmail,
+                email: userData.assignedEmail || userData.email,
                 name: userData.name,
                 loginEmail: userData.email,
               });
@@ -169,9 +181,34 @@ export function EmployeeAuthProvider({ children }) {
 
       cognitoUser.authenticateUser(authDetails, {
         onSuccess: (result) => {
+          // Get groups from the ID token payload
+          const idToken = result.getIdToken();
+          const tokenPayload = idToken.decodePayload();
+          const groups = tokenPayload['cognito:groups'] || [];
+
+          // Check if user is in employees group
+          if (!groups.includes('employees')) {
+            // Not an employee
+            cognitoUser.signOut();
+            setError('You do not have access to the employee panel');
+            setIsLoading(false);
+            reject(new Error('You do not have access to the employee panel'));
+            return;
+          }
+
           cognitoUser.getUserAttributes((err, attributes) => {
             if (err) {
-              setUser({ email });
+              // Still set user since we verified they're in the employees group
+              const userData = {
+                email: email,
+                name: 'Employee',
+              };
+              setUser(userData);
+              setEmployee({
+                email: email, // Company email is the login email
+                name: userData.name,
+                loginEmail: email,
+              });
               setIsLoading(false);
               resolve(result);
             } else {
@@ -180,29 +217,16 @@ export function EmployeeAuthProvider({ children }) {
                 userAttrs[attr.getName()] = attr.getValue();
               });
 
-              // Check if user is in employees group
-              const groups = userAttrs['cognito:groups'] || '';
-              const groupList = Array.isArray(groups) ? groups : groups.split(',');
-
-              if (!groupList.includes('employees')) {
-                // Not an employee
-                cognitoUser.signOut();
-                setError('You do not have access to the employee panel');
-                setIsLoading(false);
-                reject(new Error('You do not have access to the employee panel'));
-                return;
-              }
-
               const userData = {
                 email: userAttrs.email || email,
                 name: userAttrs.name || 'Employee',
-                assignedEmail: userAttrs['custom:assigned_email'],
+                assignedEmail: userAttrs['custom:assigned_email'] || userAttrs.email || email,
                 ...userAttrs,
               };
 
               setUser(userData);
               setEmployee({
-                email: userData.assignedEmail,
+                email: userData.assignedEmail || userData.email,
                 name: userData.name,
                 loginEmail: userData.email,
               });
