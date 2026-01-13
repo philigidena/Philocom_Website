@@ -28,6 +28,12 @@ variable "frontend_url" {
   default     = "https://philocom.co"
 }
 
+variable "cors_origin" {
+  description = "CORS allowed origin (* for development)"
+  type        = string
+  default     = "*"
+}
+
 variable "admin_email" {
   description = "Admin email for notifications"
   type        = string

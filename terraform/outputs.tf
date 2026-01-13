@@ -52,3 +52,35 @@ output "ses_identity_arn" {
   description = "SES identity ARN"
   value       = module.email.ses_identity_arn
 }
+
+# Cognito Outputs (Admin Panel Auth)
+output "cognito_user_pool_id" {
+  description = "Cognito User Pool ID"
+  value       = module.auth.user_pool_id
+}
+
+output "cognito_user_pool_client_id" {
+  description = "Cognito User Pool Client ID"
+  value       = module.auth.user_pool_client_id
+}
+
+output "cognito_user_pool_endpoint" {
+  description = "Cognito User Pool endpoint"
+  value       = module.auth.user_pool_endpoint
+}
+
+# Email System Tables
+output "emails_table_name" {
+  description = "DynamoDB Emails table name"
+  value       = module.database.emails_table_name
+}
+
+output "email_templates_table_name" {
+  description = "DynamoDB Email Templates table name"
+  value       = module.database.email_templates_table_name
+}
+
+output "email_contacts_table_name" {
+  description = "DynamoDB Email Contacts table name"
+  value       = module.database.email_contacts_table_name
+}

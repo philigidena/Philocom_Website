@@ -9,11 +9,14 @@ import { successResponse, errorResponse } from '../utils/response.js';
 const PROJECTS_TABLE = process.env.PROJECTS_TABLE;
 
 /**
- * GET /projects - Get all projects
+ * GET /projects - Get all published projects
  */
 export const getProjects = async (event) => {
   try {
-    const projects = await scanTable(PROJECTS_TABLE);
+    let projects = await scanTable(PROJECTS_TABLE);
+
+    // Filter only published projects
+    projects = projects.filter(project => project.status === 'published');
 
     // Sort by createdAt descending
     const sortedProjects = projects.sort((a, b) => b.createdAt - a.createdAt);

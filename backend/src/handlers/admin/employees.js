@@ -147,17 +147,17 @@ export const createEmployee = async (event) => {
       return validationErrorResponse(['This company email is already assigned to another employee']);
     }
 
-    // Create Cognito user
+    // Create Cognito user - use company email as username for login
     let cognitoUserId;
     try {
       const createUserCommand = new AdminCreateUserCommand({
         UserPoolId: COGNITO_USER_POOL_ID,
-        Username: data.email.toLowerCase(),
+        Username: data.assignedEmail.toLowerCase(), // Login with company email
         UserAttributes: [
-          { Name: 'email', Value: data.email.toLowerCase() },
+          { Name: 'email', Value: data.assignedEmail.toLowerCase() }, // Company email for Cognito
           { Name: 'email_verified', Value: 'true' },
           { Name: 'name', Value: sanitizeInput(data.name) },
-          { Name: 'custom:assigned_email', Value: data.assignedEmail.toLowerCase() },
+          { Name: 'custom:personal_email', Value: data.email ? data.email.toLowerCase() : '' }, // Store personal email as backup
         ],
         TemporaryPassword: data.temporaryPassword || generateTemporaryPassword(),
         MessageAction: data.suppressEmail ? 'SUPPRESS' : undefined,
@@ -186,8 +186,8 @@ export const createEmployee = async (event) => {
     // Create employee record in DynamoDB
     const employee = {
       id: uuidv4(),
-      email: data.assignedEmail.toLowerCase(),
-      loginEmail: data.email.toLowerCase(),
+      email: data.assignedEmail.toLowerCase(), // Company email (used for login)
+      personalEmail: data.email ? data.email.toLowerCase() : null, // Personal email (optional, for contact)
       cognitoUserId,
       name: sanitizeInput(data.name),
       department: data.department ? sanitizeInput(data.department) : null,

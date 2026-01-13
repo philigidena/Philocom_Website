@@ -528,24 +528,7 @@ function CreateEmployeeModal({ onClose, onSubmit }) {
 
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-1">
-              Login Email *
-            </label>
-            <input
-              type="email"
-              required
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-              placeholder="john@personal-email.com"
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              The email address used to log into the employee panel
-            </p>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">
-              Company Email *
+              Company Email * <span className="text-cyan-400">(Login Email)</span>
             </label>
             <input
               type="email"
@@ -556,7 +539,23 @@ function CreateEmployeeModal({ onClose, onSubmit }) {
               placeholder="john@philocom.co"
             />
             <p className="text-xs text-gray-500 mt-1">
-              The @philocom.co email address assigned to this employee
+              The @philocom.co email used to log in and send/receive emails
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">
+              Personal Email <span className="text-gray-500">(Optional)</span>
+            </label>
+            <input
+              type="email"
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+              placeholder="john@gmail.com"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Personal email for contact purposes (optional)
             </p>
           </div>
 

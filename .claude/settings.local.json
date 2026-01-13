@@ -2,7 +2,21 @@
   "permissions": {
     "allow": [
       "Bash(terraform version:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(cat:*)",
+      "Bash(tree:*)",
+      "Bash(npm run build:*)",
+      "Bash(npx vite:*)",
+      "Bash(terraform init:*)",
+      "Bash(terraform validate:*)",
+      "Bash(aws ssm put-parameter:*)",
+      "Bash(aws lambda list-functions:*)",
+      "Bash(for func in philocom-dev-admin-get-emails philocom-dev-admin-get-email philocom-dev-admin-send-email philocom-dev-admin-get-projects philocom-dev-admin-create-project philocom-dev-admin-update-project philocom-dev-admin-delete-project philocom-dev-admin-get-blog philocom-dev-admin-create-blog philocom-dev-admin-update-blog philocom-dev-admin-delete-blog philocom-dev-admin-get-contacts philocom-dev-admin-update-contact philocom-dev-admin-delete-contact philocom-dev-get-projects philocom-dev-get-testimonials philocom-dev-get-blog-posts philocom-dev-contact-handler philocom-dev-newsletter-handler philocom-dev-webhook-email)",
+      "Bash(do echo \"Updating $func...\")",
+      "Bash(aws lambda update-function-code:*)",
+      "Bash(done)",
+      "Bash(aws dynamodb list-tables:*)",
+      "Bash(aws dynamodb describe-table:*)"
     ]
   }
 }
