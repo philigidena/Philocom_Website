@@ -386,7 +386,7 @@ export const sendEmail = async (event) => {
       labels: [],
       messageId: resendResponse.id,
       inReplyTo: data.inReplyTo || null,
-      sentBy: employee.id,
+      sentBy: employee.id || employee.email,
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
@@ -402,12 +402,13 @@ export const sendEmail = async (event) => {
     );
 
     if (adminRecipients.length > 0) {
-      // Create inbound copy for admin panel (with ownerEmail = null so admins see it)
+      // Create inbound copy for admin panel
+      // Don't set ownerEmail so it shows up in admin panel (DirectionIndex query with filtering)
       const adminInboundEmail = {
         id: uuidv4(),
         threadId,
         direction: 'inbound',
-        ownerEmail: null, // null means it's visible in admin panel
+        // ownerEmail intentionally omitted so admin panel sees it via DirectionIndex
         from: { email: employee.email, name: employee.name },
         to: toRecipients.map(email => ({ email, name: email.split('@')[0] })),
         cc: ccRecipients.map(email => ({ email, name: email.split('@')[0] })),
@@ -420,7 +421,7 @@ export const sendEmail = async (event) => {
         labels: ['internal'],
         messageId: `internal-${resendResponse.id}`,
         inReplyTo: data.inReplyTo || null,
-        sentBy: employee.id,
+        sentBy: employee.id || employee.email,
         createdAt: Date.now(),
         updatedAt: Date.now(),
       };

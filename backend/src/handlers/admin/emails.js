@@ -201,6 +201,9 @@ const generateThreadId = (subject, inReplyTo = null) => {
 // Admin email addresses - only emails from/to these addresses are shown in admin panel
 const ADMIN_EMAIL_ADDRESSES = ['info@philocom.co', 'support@philocom.co', 'admin@philocom.co', 'noreply@philocom.co'];
 
+// Employee email domain - emails to @philocom.co addresses may need direct delivery
+const EMPLOYEE_EMAIL_DOMAIN = '@philocom.co';
+
 /**
  * GET /admin/emails - Get all emails (inbox view)
  * Query params: direction=inbound|outbound, limit, lastKey

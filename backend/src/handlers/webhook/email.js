@@ -10,7 +10,7 @@ import { putItem, updateItem, getItem } from '../../utils/db.js';
 import { successResponse, errorResponse } from '../../utils/response.js';
 
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, QueryCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, QueryCommand, ScanCommand } from '@aws-sdk/lib-dynamodb';
 
 const EMAILS_TABLE = process.env.EMAILS_TABLE;
 const EMAIL_CONTACTS_TABLE = process.env.EMAIL_CONTACTS_TABLE;
@@ -371,6 +371,50 @@ const findMatchingEmployees = async (emailAddresses) => {
 };
 
 /**
+ * Check if an email with this messageId already exists for a specific owner
+ * Used to prevent duplicate emails when webhook is triggered for internal emails
+ */
+const emailExistsForOwner = async (messageId, ownerEmail) => {
+  if (!messageId) return false;
+
+  try {
+    // Scan for emails with matching messageId and ownerEmail
+    // This is a simple deduplication check
+    const command = new ScanCommand({
+      TableName: EMAILS_TABLE,
+      FilterExpression: 'messageId = :messageId AND (ownerEmail = :ownerEmail OR (attribute_not_exists(ownerEmail) AND :ownerEmail = :nullVal))',
+      ExpressionAttributeValues: {
+        ':messageId': messageId,
+        ':ownerEmail': ownerEmail || null,
+        ':nullVal': null,
+      },
+      Limit: 1,
+    });
+
+    const response = await docClient.send(command);
+    return response.Items && response.Items.length > 0;
+  } catch (error) {
+    console.error('Error checking for duplicate email:', error);
+    return false;
+  }
+};
+
+/**
+ * Check if an email with this messageId or internal-prefixed version already exists
+ */
+const checkForDuplicateEmail = async (messageId, ownerEmail) => {
+  if (!messageId) return false;
+
+  // Check for both the original messageId and internal-prefixed version
+  const exists = await emailExistsForOwner(messageId, ownerEmail);
+  if (exists) return true;
+
+  // Also check for internal- prefix (added when employee sends to admin)
+  const internalExists = await emailExistsForOwner(`internal-${messageId}`, ownerEmail);
+  return internalExists;
+};
+
+/**
  * POST /webhook/email - Handle incoming email from Resend or legacy sources
  */
 export const handleIncoming = async (event) => {
@@ -516,8 +560,17 @@ export const handleIncoming = async (event) => {
 
     // If there are matching employees, create a separate email record for each
     // This ensures each employee has their own copy in their inbox
+    // But first check for duplicates (in case employee already sent this email internally)
+    let employeeCopiesCreated = 0;
     if (matchingEmployees.length > 0) {
       for (const employee of matchingEmployees) {
+        // Check if this email already exists for this employee (deduplication)
+        const isDuplicate = await checkForDuplicateEmail(messageId, employee.email.toLowerCase());
+        if (isDuplicate) {
+          console.log('Skipping duplicate email for employee:', employee.email, messageId);
+          continue;
+        }
+
         const employeeEmailRecord = {
           ...baseEmailRecord,
           id: uuidv4(),
@@ -526,18 +579,28 @@ export const handleIncoming = async (event) => {
 
         await putItem(EMAILS_TABLE, employeeEmailRecord);
         console.log('Email stored for employee:', employee.email, employeeEmailRecord.id);
+        employeeCopiesCreated++;
       }
     }
 
-    // Always create a master record without ownerEmail for admin panel
-    // (so admins can see all emails)
-    const adminEmailRecord = {
-      ...baseEmailRecord,
-      id: uuidv4(),
-      ownerEmail: null, // No owner - visible to admins
-    };
+    // Check if admin copy already exists (in case it was created by employee send)
+    const adminDuplicateExists = await checkForDuplicateEmail(messageId, null);
+    let adminEmailId = null;
 
-    await putItem(EMAILS_TABLE, adminEmailRecord);
+    if (adminDuplicateExists) {
+      console.log('Skipping duplicate admin email for messageId:', messageId);
+    } else {
+      // Create a master record without ownerEmail for admin panel
+      // (so admins can see all emails)
+      const adminEmailRecord = {
+        ...baseEmailRecord,
+        id: uuidv4(),
+        // ownerEmail intentionally omitted so admin panel sees it
+      };
+
+      await putItem(EMAILS_TABLE, adminEmailRecord);
+      adminEmailId = adminEmailRecord.id;
+    }
 
     // Update or create contact record
     const existingContact = await getItem(EMAIL_CONTACTS_TABLE, { email: fromParsed.email });
@@ -560,12 +623,13 @@ export const handleIncoming = async (event) => {
       });
     }
 
-    console.log('Email stored successfully:', adminEmailRecord.id);
+    console.log('Email processing complete:', { adminEmailId, employeeCopiesCreated, messageId });
 
     return successResponse({
       message: 'Email received and stored',
-      emailId: adminEmailRecord.id,
-      employeeCopies: matchingEmployees.length,
+      emailId: adminEmailId,
+      employeeCopies: employeeCopiesCreated,
+      deduplicated: adminDuplicateExists,
     }, 201);
 
   } catch (error) {
