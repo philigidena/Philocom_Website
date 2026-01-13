@@ -14,13 +14,23 @@ module "database" {
   common_tags  = local.common_tags
 }
 
+# Cognito Authentication Module (Admin Panel)
+module "auth" {
+  source = "./modules/auth"
+
+  project_name = var.project_name
+  environment  = var.environment
+  frontend_url = var.frontend_url
+  common_tags  = local.common_tags
+}
+
 # Lambda Functions & API Gateway Module
 module "api" {
   source = "./modules/api"
 
   project_name     = var.project_name
   environment      = var.environment
-  frontend_url     = var.frontend_url
+  frontend_url     = var.cors_origin  # Use CORS origin for API (allows * for dev)
   common_tags      = local.common_tags
 
   # DynamoDB table names from database module
@@ -37,10 +47,26 @@ module "api" {
   newsletter_table_arn    = module.database.newsletter_table_arn
   blog_posts_table_arn    = module.database.blog_posts_table_arn
 
+  # Email system tables
+  emails_table_name          = module.database.emails_table_name
+  emails_table_arn           = module.database.emails_table_arn
+  email_templates_table_name = module.database.email_templates_table_name
+  email_templates_table_arn  = module.database.email_templates_table_arn
+  email_contacts_table_name  = module.database.email_contacts_table_name
+  email_contacts_table_arn   = module.database.email_contacts_table_arn
+
+  # Employees table
+  employees_table_name = module.database.employees_table_name
+  employees_table_arn  = module.database.employees_table_arn
+
+  # Cognito for admin auth
+  cognito_user_pool_arn = module.auth.user_pool_arn
+  cognito_user_pool_id  = module.auth.user_pool_id
+
   # SES identity ARN
   ses_identity_arn = module.email.ses_identity_arn
 
-  depends_on = [module.database, module.email]
+  depends_on = [module.database, module.email, module.auth]
 }
 
 # SES Email Service Module

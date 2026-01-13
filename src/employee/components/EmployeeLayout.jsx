@@ -1,6 +1,6 @@
 /**
- * Admin Panel Layout Component
- * Provides sidebar navigation and main content area
+ * Employee Panel Layout Component
+ * Provides sidebar navigation and main content area with restricted options
  */
 
 import { useState } from 'react';
@@ -10,41 +10,37 @@ import {
   Mail,
   FolderOpen,
   Users,
-  UserCog,
-  FileText,
-  Settings,
+  User,
   LogOut,
   Menu,
   X,
   ChevronRight,
   Bell,
 } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
+import { useEmployeeAuth } from '../context/EmployeeAuthContext';
 
 const navigation = [
-  { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
-  { name: 'Email', href: '/admin/email', icon: Mail },
-  { name: 'Projects', href: '/admin/projects', icon: FolderOpen },
-  { name: 'Contacts', href: '/admin/contacts', icon: Users },
-  { name: 'Employees', href: '/admin/employees', icon: UserCog },
-  { name: 'Blog', href: '/admin/blog', icon: FileText },
-  { name: 'Settings', href: '/admin/settings', icon: Settings },
+  { name: 'Dashboard', href: '/employee', icon: LayoutDashboard },
+  { name: 'My Email', href: '/employee/email', icon: Mail },
+  { name: 'Contacts', href: '/employee/contacts', icon: Users },
+  { name: 'Projects', href: '/employee/projects', icon: FolderOpen },
+  { name: 'Profile', href: '/employee/profile', icon: User },
 ];
 
-export default function AdminLayout({ children }) {
+export default function EmployeeLayout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user, employee, logout } = useEmployeeAuth();
 
   const handleLogout = () => {
     logout();
-    navigate('/admin/login');
+    navigate('/employee/login');
   };
 
   const isActive = (href) => {
-    if (href === '/admin') {
-      return location.pathname === '/admin';
+    if (href === '/employee') {
+      return location.pathname === '/employee';
     }
     return location.pathname.startsWith(href);
   };
@@ -67,11 +63,14 @@ export default function AdminLayout({ children }) {
       >
         {/* Logo */}
         <div className="flex items-center justify-between h-16 px-6 border-b border-gray-800">
-          <Link to="/admin" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-lg flex items-center justify-center">
+          <Link to="/employee" className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg flex items-center justify-center">
               <span className="text-white font-bold text-sm">P</span>
             </div>
-            <span className="text-white font-semibold">Philocom</span>
+            <div>
+              <span className="text-white font-semibold">Philocom</span>
+              <span className="text-xs text-green-400 block -mt-1">Employee</span>
+            </div>
           </Link>
           <button
             onClick={() => setSidebarOpen(false)}
@@ -91,7 +90,7 @@ export default function AdminLayout({ children }) {
                 to={item.href}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                   active
-                    ? 'bg-cyan-500/10 text-cyan-400'
+                    ? 'bg-green-500/10 text-green-400'
                     : 'text-gray-400 hover:bg-gray-800 hover:text-white'
                 }`}
                 onClick={() => setSidebarOpen(false)}
@@ -109,17 +108,17 @@ export default function AdminLayout({ children }) {
         {/* User section */}
         <div className="p-4 border-t border-gray-800">
           <div className="flex items-center gap-3 px-3 py-2">
-            <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
+            <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center">
               <span className="text-white font-semibold text-sm">
-                {user?.name?.[0] || user?.email?.[0] || 'A'}
+                {user?.name?.[0] || employee?.name?.[0] || 'E'}
               </span>
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-white truncate">
-                {user?.name || 'Admin'}
+                {user?.name || employee?.name || 'Employee'}
               </p>
-              <p className="text-xs text-gray-500 truncate">
-                {user?.email || 'admin@philocom.co'}
+              <p className="text-xs text-green-400 truncate">
+                {employee?.email || 'employee@philocom.co'}
               </p>
             </div>
           </div>
@@ -146,13 +145,18 @@ export default function AdminLayout({ children }) {
             </button>
 
             <div className="flex-1 lg:flex-none">
-              {/* Breadcrumb or page title can go here */}
+              {/* Employee email indicator */}
+              <div className="hidden lg:flex items-center gap-2 text-sm">
+                <Mail className="w-4 h-4 text-green-400" />
+                <span className="text-gray-400">
+                  Sending as: <span className="text-green-400 font-medium">{employee?.email || 'employee@philocom.co'}</span>
+                </span>
+              </div>
             </div>
 
             <div className="flex items-center gap-4">
               <button className="relative text-gray-400 hover:text-white transition-colors">
                 <Bell className="w-5 h-5" />
-                <span className="absolute -top-1 -right-1 w-2 h-2 bg-cyan-500 rounded-full" />
               </button>
               <div className="hidden lg:block h-8 w-px bg-gray-800" />
               <Link

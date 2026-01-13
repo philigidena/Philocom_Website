@@ -10,6 +10,9 @@ import Terms from './pages/Terms';
 // Lazy load admin routes to prevent blocking main app
 const AdminRoutes = lazy(() => import('./admin/AdminRoutes'));
 
+// Lazy load employee routes
+const EmployeeRoutes = lazy(() => import('./employee/EmployeeRoutes'));
+
 // Error Boundary to catch render errors
 class ErrorBoundary extends Component {
   constructor(props) {
@@ -57,6 +60,16 @@ function App() {
             element={
               <Suspense fallback={<div>Loading admin...</div>}>
                 <AdminRoutes />
+              </Suspense>
+            }
+          />
+
+          {/* Employee Routes */}
+          <Route
+            path="/employee/*"
+            element={
+              <Suspense fallback={<div>Loading employee portal...</div>}>
+                <EmployeeRoutes />
               </Suspense>
             }
           />

@@ -12,80 +12,196 @@ import {
   Send,
   Clock,
   ArrowUpRight,
+  Loader2,
+  UserCog,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { format } from 'date-fns';
 import AdminLayout from '../components/AdminLayout';
+import { useAuth } from '../context/AuthContext';
 
-const stats = [
-  {
-    name: 'Total Emails',
-    value: '124',
-    change: '+12%',
-    changeType: 'increase',
-    icon: Mail,
-    color: 'cyan',
-  },
-  {
-    name: 'Unread',
-    value: '8',
-    change: '3 new today',
-    changeType: 'neutral',
-    icon: Inbox,
-    color: 'purple',
-  },
-  {
-    name: 'Sent',
-    value: '48',
-    change: '+5 this week',
-    changeType: 'increase',
-    icon: Send,
-    color: 'blue',
-  },
-  {
-    name: 'Contacts',
-    value: '89',
-    change: '+18%',
-    changeType: 'increase',
-    icon: Users,
-    color: 'green',
-  },
-];
-
-const recentEmails = [
-  {
-    id: '1',
-    from: 'john@acme.com',
-    subject: 'Project Inquiry - Web Development',
-    preview: 'Hi, I am interested in discussing a potential web development project for our company...',
-    time: '10:30 AM',
-    unread: true,
-  },
-  {
-    id: '2',
-    from: 'sarah@techcorp.io',
-    subject: 'Partnership Opportunity',
-    preview: 'We would like to explore a potential partnership between our companies...',
-    time: 'Yesterday',
-    unread: true,
-  },
-  {
-    id: '3',
-    from: 'mike@startup.co',
-    subject: 'Quote Request for Mobile App',
-    preview: 'Could you please provide a quote for developing a mobile application...',
-    time: 'Jan 8',
-    unread: false,
-  },
-];
+// API URL with fallback to AWS API Gateway
+const API_URL = import.meta.env.VITE_API_BASE_URL || 'https://gtafs0o8rd.execute-api.eu-central-1.amazonaws.com/dev';
 
 const quickActions = [
   { name: 'Compose Email', href: '/admin/email/compose', icon: Send },
   { name: 'View Inbox', href: '/admin/email', icon: Inbox },
   { name: 'Manage Projects', href: '/admin/projects', icon: FolderOpen },
+  { name: 'Manage Employees', href: '/admin/employees', icon: UserCog },
   { name: 'View Contacts', href: '/admin/contacts', icon: Users },
 ];
 
 export default function Dashboard() {
+  const { getIdToken } = useAuth();
+  const [stats, setStats] = useState([
+    { name: 'Total Emails', value: '-', change: '', changeType: 'neutral', icon: Mail, color: 'cyan' },
+    { name: 'Unread', value: '-', change: '', changeType: 'neutral', icon: Inbox, color: 'purple' },
+    { name: 'Sent', value: '-', change: '', changeType: 'neutral', icon: Send, color: 'blue' },
+    { name: 'Contacts', value: '-', change: '', changeType: 'neutral', icon: Users, color: 'green' },
+  ]);
+  const [recentEmails, setRecentEmails] = useState([]);
+  const [recentActivity, setRecentActivity] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    setIsLoading(true);
+    try {
+      const token = await getIdToken();
+      const headers = { Authorization: `Bearer ${token}` };
+
+      // Fetch all data in parallel
+      const [inboundRes, outboundRes, contactsRes] = await Promise.all([
+        fetch(`${API_URL}/admin/emails?direction=inbound&limit=50`, { headers }).catch(() => null),
+        fetch(`${API_URL}/admin/emails?direction=outbound&limit=50`, { headers }).catch(() => null),
+        fetch(`${API_URL}/admin/contacts`, { headers }).catch(() => null),
+      ]);
+
+      // Process inbound emails
+      let inboundEmails = [];
+      let unreadCount = 0;
+      if (inboundRes?.ok) {
+        const inboundData = await inboundRes.json();
+        inboundEmails = inboundData.data?.emails || [];
+        unreadCount = inboundEmails.filter(e => !e.isRead).length;
+      }
+
+      // Process outbound emails
+      let outboundEmails = [];
+      if (outboundRes?.ok) {
+        const outboundData = await outboundRes.json();
+        outboundEmails = outboundData.data?.emails || [];
+      }
+
+      // Process contacts
+      let contacts = [];
+      if (contactsRes?.ok) {
+        const contactsData = await contactsRes.json();
+        contacts = contactsData.data?.contacts || [];
+      }
+
+      // Calculate stats
+      const totalEmails = inboundEmails.length + outboundEmails.length;
+      const sentCount = outboundEmails.length;
+      const contactsCount = contacts.length;
+
+      // Update stats
+      setStats([
+        {
+          name: 'Total Emails',
+          value: totalEmails.toString(),
+          change: `${inboundEmails.length} received`,
+          changeType: 'neutral',
+          icon: Mail,
+          color: 'cyan',
+        },
+        {
+          name: 'Unread',
+          value: unreadCount.toString(),
+          change: unreadCount > 0 ? 'needs attention' : 'all caught up',
+          changeType: unreadCount > 0 ? 'increase' : 'neutral',
+          icon: Inbox,
+          color: 'purple',
+        },
+        {
+          name: 'Sent',
+          value: sentCount.toString(),
+          change: 'outbound emails',
+          changeType: 'neutral',
+          icon: Send,
+          color: 'blue',
+        },
+        {
+          name: 'Contacts',
+          value: contactsCount.toString(),
+          change: 'total contacts',
+          changeType: 'neutral',
+          icon: Users,
+          color: 'green',
+        },
+      ]);
+
+      // Get recent emails (sorted by date, limited to 5)
+      const allEmails = [...inboundEmails].sort((a, b) =>
+        new Date(b.createdAt) - new Date(a.createdAt)
+      ).slice(0, 5);
+
+      setRecentEmails(allEmails.map(email => ({
+        id: email.id,
+        from: email.from?.name || email.from?.email || 'Unknown',
+        subject: email.subject || '(No subject)',
+        preview: email.bodyText?.substring(0, 100) || '',
+        time: formatEmailTime(email.createdAt),
+        unread: !email.isRead,
+      })));
+
+      // Build recent activity from emails
+      const activity = [];
+      if (inboundEmails.length > 0) {
+        const latestInbound = inboundEmails.sort((a, b) =>
+          new Date(b.createdAt) - new Date(a.createdAt)
+        )[0];
+        activity.push({
+          type: 'received',
+          message: `Email from ${latestInbound.from?.name || latestInbound.from?.email}`,
+          time: formatActivityTime(latestInbound.createdAt),
+          icon: Mail,
+          color: 'cyan',
+        });
+      }
+      if (outboundEmails.length > 0) {
+        const latestOutbound = outboundEmails.sort((a, b) =>
+          new Date(b.createdAt) - new Date(a.createdAt)
+        )[0];
+        activity.push({
+          type: 'sent',
+          message: `Email sent to ${latestOutbound.to?.[0]?.email}`,
+          time: formatActivityTime(latestOutbound.createdAt),
+          icon: Send,
+          color: 'green',
+        });
+      }
+      setRecentActivity(activity);
+
+    } catch (err) {
+      console.error('Error fetching dashboard data:', err);
+      // Keep default stats on error
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const formatEmailTime = (timestamp) => {
+    if (!timestamp) return '';
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffDays = Math.floor((now - date) / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) {
+      return format(date, 'h:mm a');
+    } else if (diffDays < 7) {
+      return format(date, 'EEE');
+    } else {
+      return format(date, 'MMM d');
+    }
+  };
+
+  const formatActivityTime = (timestamp) => {
+    if (!timestamp) return '';
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffHours < 1) return 'Just now';
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+  };
+
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -155,43 +271,54 @@ export default function Dashboard() {
               </Link>
             </div>
             <div className="divide-y divide-gray-800">
-              {recentEmails.map((email) => (
-                <Link
-                  key={email.id}
-                  to={`/admin/email/${email.id}`}
-                  className="flex items-start gap-4 px-6 py-4 hover:bg-gray-800/50 transition-colors"
-                >
-                  <div
-                    className={`w-2 h-2 mt-2 rounded-full ${
-                      email.unread ? 'bg-cyan-500' : 'bg-transparent'
-                    }`}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-4">
+              {isLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-6 h-6 text-cyan-400 animate-spin" />
+                </div>
+              ) : recentEmails.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-8 text-gray-400">
+                  <Mail className="w-8 h-8 mb-2 opacity-50" />
+                  <p className="text-sm">No emails yet</p>
+                </div>
+              ) : (
+                recentEmails.map((email) => (
+                  <Link
+                    key={email.id}
+                    to={`/admin/email/${email.id}`}
+                    className="flex items-start gap-4 px-6 py-4 hover:bg-gray-800/50 transition-colors"
+                  >
+                    <div
+                      className={`w-2 h-2 mt-2 rounded-full ${
+                        email.unread ? 'bg-cyan-500' : 'bg-transparent'
+                      }`}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-4">
+                        <p
+                          className={`text-sm truncate ${
+                            email.unread ? 'text-white font-semibold' : 'text-gray-300'
+                          }`}
+                        >
+                          {email.from}
+                        </p>
+                        <span className="text-xs text-gray-500 whitespace-nowrap">
+                          {email.time}
+                        </span>
+                      </div>
                       <p
-                        className={`text-sm truncate ${
-                          email.unread ? 'text-white font-semibold' : 'text-gray-300'
+                        className={`text-sm mt-1 ${
+                          email.unread ? 'text-white' : 'text-gray-400'
                         }`}
                       >
-                        {email.from}
+                        {email.subject}
                       </p>
-                      <span className="text-xs text-gray-500 whitespace-nowrap">
-                        {email.time}
-                      </span>
+                      <p className="text-sm text-gray-500 truncate mt-1">
+                        {email.preview}
+                      </p>
                     </div>
-                    <p
-                      className={`text-sm mt-1 ${
-                        email.unread ? 'text-white' : 'text-gray-400'
-                      }`}
-                    >
-                      {email.subject}
-                    </p>
-                    <p className="text-sm text-gray-500 truncate mt-1">
-                      {email.preview}
-                    </p>
-                  </div>
-                </Link>
-              ))}
+                  </Link>
+                ))
+              )}
             </div>
           </div>
 
@@ -217,30 +344,44 @@ export default function Dashboard() {
             <div className="px-6 py-4 border-t border-gray-800">
               <h3 className="text-sm font-medium text-gray-400 mb-4">Recent Activity</h3>
               <div className="space-y-4">
-                <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 bg-cyan-500/10 rounded-full flex items-center justify-center">
-                    <Mail className="w-4 h-4 text-cyan-400" />
+                {isLoading ? (
+                  <div className="flex items-center justify-center py-4">
+                    <Loader2 className="w-5 h-5 text-gray-400 animate-spin" />
                   </div>
-                  <div>
-                    <p className="text-sm text-gray-300">New email received</p>
-                    <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
-                      <Clock className="w-3 h-3" />
-                      2 hours ago
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 bg-green-500/10 rounded-full flex items-center justify-center">
-                    <Send className="w-4 h-4 text-green-400" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-300">Email sent successfully</p>
-                    <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
-                      <Clock className="w-3 h-3" />
-                      5 hours ago
-                    </p>
-                  </div>
-                </div>
+                ) : recentActivity.length === 0 ? (
+                  <p className="text-sm text-gray-500 text-center py-4">No recent activity</p>
+                ) : (
+                  recentActivity.map((activity, index) => (
+                    <div key={index} className="flex items-start gap-3">
+                      <div
+                        className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                          activity.color === 'cyan'
+                            ? 'bg-cyan-500/10'
+                            : activity.color === 'green'
+                            ? 'bg-green-500/10'
+                            : 'bg-gray-800'
+                        }`}
+                      >
+                        <activity.icon
+                          className={`w-4 h-4 ${
+                            activity.color === 'cyan'
+                              ? 'text-cyan-400'
+                              : activity.color === 'green'
+                              ? 'text-green-400'
+                              : 'text-gray-400'
+                          }`}
+                        />
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-300">{activity.message}</p>
+                        <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                          <Clock className="w-3 h-3" />
+                          {activity.time}
+                        </p>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </div>

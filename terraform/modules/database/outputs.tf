@@ -47,3 +47,45 @@ output "blog_posts_table_arn" {
   description = "Blog Posts DynamoDB table ARN"
   value       = aws_dynamodb_table.blog_posts.arn
 }
+
+# Email System Outputs
+output "emails_table_name" {
+  description = "Emails DynamoDB table name"
+  value       = aws_dynamodb_table.emails.name
+}
+
+output "emails_table_arn" {
+  description = "Emails DynamoDB table ARN"
+  value       = aws_dynamodb_table.emails.arn
+}
+
+output "email_templates_table_name" {
+  description = "Email Templates DynamoDB table name"
+  value       = aws_dynamodb_table.email_templates.name
+}
+
+output "email_templates_table_arn" {
+  description = "Email Templates DynamoDB table ARN"
+  value       = aws_dynamodb_table.email_templates.arn
+}
+
+output "email_contacts_table_name" {
+  description = "Email Contacts DynamoDB table name"
+  value       = aws_dynamodb_table.email_contacts.name
+}
+
+output "email_contacts_table_arn" {
+  description = "Email Contacts DynamoDB table ARN"
+  value       = aws_dynamodb_table.email_contacts.arn
+}
+
+# Employee System Outputs
+output "employees_table_name" {
+  description = "Employees DynamoDB table name"
+  value       = aws_dynamodb_table.employees.name
+}
+
+output "employees_table_arn" {
+  description = "Employees DynamoDB table ARN"
+  value       = aws_dynamodb_table.employees.arn
+}

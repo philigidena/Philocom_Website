@@ -1,24 +1,22 @@
 /**
- * Admin Routes Component
- * Handles all admin panel routing
+ * Employee Routes Component
+ * Handles all employee panel routing
  */
 
 import { Routes, Route } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext';
+import { EmployeeAuthProvider } from './context/EmployeeAuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import EmailInbox from './pages/EmailInbox';
 import EmailCompose from './pages/EmailCompose';
-import Projects from './pages/Projects';
 import Contacts from './pages/Contacts';
-import Employees from './pages/Employees';
-import Blog from './pages/Blog';
-import Settings from './pages/Settings';
+import Projects from './pages/Projects';
+import Profile from './pages/Profile';
 
-export default function AdminRoutes() {
+export default function EmployeeRoutes() {
   return (
-    <AuthProvider>
+    <EmployeeAuthProvider>
       <Routes>
         <Route path="login" element={<Login />} />
         <Route
@@ -54,14 +52,6 @@ export default function AdminRoutes() {
           }
         />
         <Route
-          path="projects"
-          element={
-            <ProtectedRoute>
-              <Projects />
-            </ProtectedRoute>
-          }
-        />
-        <Route
           path="contacts"
           element={
             <ProtectedRoute>
@@ -70,30 +60,22 @@ export default function AdminRoutes() {
           }
         />
         <Route
-          path="employees"
+          path="projects"
           element={
             <ProtectedRoute>
-              <Employees />
+              <Projects />
             </ProtectedRoute>
           }
         />
         <Route
-          path="blog"
+          path="profile"
           element={
             <ProtectedRoute>
-              <Blog />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="settings"
-          element={
-            <ProtectedRoute>
-              <Settings />
+              <Profile />
             </ProtectedRoute>
           }
         />
       </Routes>
-    </AuthProvider>
+    </EmployeeAuthProvider>
   );
 }

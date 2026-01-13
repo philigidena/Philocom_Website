@@ -9,12 +9,18 @@ import { createHmac, timingSafeEqual } from 'crypto';
 import { putItem, updateItem, getItem } from '../../utils/db.js';
 import { successResponse, errorResponse } from '../../utils/response.js';
 
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import { DynamoDBDocumentClient, QueryCommand } from '@aws-sdk/lib-dynamodb';
+
 const EMAILS_TABLE = process.env.EMAILS_TABLE;
 const EMAIL_CONTACTS_TABLE = process.env.EMAIL_CONTACTS_TABLE;
+const EMPLOYEES_TABLE = process.env.EMPLOYEES_TABLE;
 const WEBHOOK_SECRET_PARAM = process.env.WEBHOOK_SECRET_PARAM || '/philocom/webhook-secret';
 const RESEND_API_KEY_PARAM = process.env.RESEND_API_KEY_PARAM || '/philocom/resend-api-key';
 
 const ssmClient = new SSMClient({ region: process.env.AWS_REGION || 'eu-central-1' });
+const dynamoClient = new DynamoDBClient({ region: process.env.AWS_REGION || 'eu-central-1' });
+const docClient = DynamoDBDocumentClient.from(dynamoClient);
 
 // Cache for Resend API key
 let cachedResendApiKey = null;
@@ -322,6 +328,49 @@ const generateThreadId = (subject, inReplyTo = null) => {
 };
 
 /**
+ * Find employee by assigned email address
+ */
+const getEmployeeByEmail = async (email) => {
+  if (!email || !EMPLOYEES_TABLE) return null;
+
+  try {
+    const command = new QueryCommand({
+      TableName: EMPLOYEES_TABLE,
+      IndexName: 'EmailIndex',
+      KeyConditionExpression: 'email = :email',
+      ExpressionAttributeValues: {
+        ':email': email.toLowerCase(),
+      },
+    });
+
+    const response = await docClient.send(command);
+    return response.Items?.[0] || null;
+  } catch (error) {
+    console.error('Error fetching employee by email:', error);
+    return null;
+  }
+};
+
+/**
+ * Find employees matching any of the given email addresses
+ */
+const findMatchingEmployees = async (emailAddresses) => {
+  const employees = [];
+
+  for (const addr of emailAddresses) {
+    const email = typeof addr === 'string' ? addr : addr.email;
+    if (email) {
+      const employee = await getEmployeeByEmail(email);
+      if (employee && employee.status === 'active') {
+        employees.push(employee);
+      }
+    }
+  }
+
+  return employees;
+};
+
+/**
  * POST /webhook/email - Handle incoming email from Resend or legacy sources
  */
 export const handleIncoming = async (event) => {
@@ -438,9 +487,14 @@ export const handleIncoming = async (event) => {
     // Generate thread ID
     const threadId = generateThreadId(subject, inReplyTo);
 
-    // Create email record
-    const emailRecord = {
-      id: uuidv4(),
+    // Find matching employees from recipients (to and cc)
+    const allRecipients = [...toParsed, ...ccParsed];
+    const matchingEmployees = await findMatchingEmployees(allRecipients);
+
+    console.log('Matching employees found:', matchingEmployees.length);
+
+    // Base email record
+    const baseEmailRecord = {
       threadId,
       direction: 'inbound',
       from: fromParsed,
@@ -460,8 +514,30 @@ export const handleIncoming = async (event) => {
       updatedAt: Date.now(),
     };
 
-    // Store email in DynamoDB
-    await putItem(EMAILS_TABLE, emailRecord);
+    // If there are matching employees, create a separate email record for each
+    // This ensures each employee has their own copy in their inbox
+    if (matchingEmployees.length > 0) {
+      for (const employee of matchingEmployees) {
+        const employeeEmailRecord = {
+          ...baseEmailRecord,
+          id: uuidv4(),
+          ownerEmail: employee.email.toLowerCase(),
+        };
+
+        await putItem(EMAILS_TABLE, employeeEmailRecord);
+        console.log('Email stored for employee:', employee.email, employeeEmailRecord.id);
+      }
+    }
+
+    // Always create a master record without ownerEmail for admin panel
+    // (so admins can see all emails)
+    const adminEmailRecord = {
+      ...baseEmailRecord,
+      id: uuidv4(),
+      ownerEmail: null, // No owner - visible to admins
+    };
+
+    await putItem(EMAILS_TABLE, adminEmailRecord);
 
     // Update or create contact record
     const existingContact = await getItem(EMAIL_CONTACTS_TABLE, { email: fromParsed.email });
@@ -484,11 +560,12 @@ export const handleIncoming = async (event) => {
       });
     }
 
-    console.log('Email stored successfully:', emailRecord.id);
+    console.log('Email stored successfully:', adminEmailRecord.id);
 
     return successResponse({
       message: 'Email received and stored',
-      emailId: emailRecord.id,
+      emailId: adminEmailRecord.id,
+      employeeCopies: matchingEmployees.length,
     }, 201);
 
   } catch (error) {

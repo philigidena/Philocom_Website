@@ -76,3 +76,63 @@ variable "ses_identity_arn" {
   description = "SES identity ARN"
   type        = string
 }
+
+# Email System Tables
+variable "emails_table_name" {
+  description = "Emails DynamoDB table name"
+  type        = string
+}
+
+variable "emails_table_arn" {
+  description = "Emails DynamoDB table ARN"
+  type        = string
+}
+
+variable "email_templates_table_name" {
+  description = "Email Templates DynamoDB table name"
+  type        = string
+}
+
+variable "email_templates_table_arn" {
+  description = "Email Templates DynamoDB table ARN"
+  type        = string
+}
+
+variable "email_contacts_table_name" {
+  description = "Email Contacts DynamoDB table name"
+  type        = string
+}
+
+variable "email_contacts_table_arn" {
+  description = "Email Contacts DynamoDB table ARN"
+  type        = string
+}
+
+# Cognito
+variable "cognito_user_pool_arn" {
+  description = "Cognito User Pool ARN for authorizer"
+  type        = string
+}
+
+variable "cognito_user_pool_id" {
+  description = "Cognito User Pool ID"
+  type        = string
+}
+
+# Resend API Key (stored in SSM Parameter Store)
+variable "resend_api_key_param" {
+  description = "SSM Parameter name for Resend API key"
+  type        = string
+  default     = "/philocom/resend-api-key"
+}
+
+# Employees Table
+variable "employees_table_name" {
+  description = "Employees DynamoDB table name"
+  type        = string
+}
+
+variable "employees_table_arn" {
+  description = "Employees DynamoDB table ARN"
+  type        = string
+}
