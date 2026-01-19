@@ -102,13 +102,13 @@ export const getPresignedUrl = async (event) => {
     }
 
     if (errors.length > 0) {
-      return validationErrorResponse(errors);
+      return validationErrorResponse(errors, event);
     }
 
     // Validate file type and size
     const validation = validateFile(data.contentType, data.size);
     if (!validation.valid) {
-      return validationErrorResponse([validation.error]);
+      return validationErrorResponse([validation.error], event);
     }
 
     // Sanitize filename
@@ -148,11 +148,11 @@ export const getPresignedUrl = async (event) => {
         contentType: data.contentType,
         size: data.size,
       },
-    });
+    }, 200, event);
 
   } catch (error) {
     console.error('Error generating presigned URL for attachment:', error);
-    return errorResponse('Failed to generate upload URL', 500, error);
+    return errorResponse('Failed to generate upload URL', 500, error, event);
   }
 };
 
@@ -178,7 +178,7 @@ export const uploadAttachment = async (event) => {
     }
 
     if (errors.length > 0) {
-      return validationErrorResponse(errors);
+      return validationErrorResponse(errors, event);
     }
 
     // Decode base64 file
@@ -188,7 +188,7 @@ export const uploadAttachment = async (event) => {
     // Validate file type and size
     const validation = validateFile(data.contentType, buffer.length);
     if (!validation.valid) {
-      return validationErrorResponse([validation.error]);
+      return validationErrorResponse([validation.error], event);
     }
 
     // Sanitize filename
@@ -226,11 +226,11 @@ export const uploadAttachment = async (event) => {
         contentType: data.contentType,
         size: buffer.length,
       },
-    }, 201);
+    }, 201, event);
 
   } catch (error) {
     console.error('Error uploading attachment:', error);
-    return errorResponse('Failed to upload attachment', 500, error);
+    return errorResponse('Failed to upload attachment', 500, error, event);
   }
 };
 
@@ -244,12 +244,12 @@ export const getDownloadUrl = async (event) => {
     const key = decodeURIComponent(event.pathParameters?.key || '');
 
     if (!key) {
-      return validationErrorResponse(['Attachment key is required']);
+      return validationErrorResponse(['Attachment key is required'], event);
     }
 
     // Verify the key is for email attachments
     if (!key.startsWith('emails/attachments/')) {
-      return errorResponse('Invalid attachment key', 400);
+      return errorResponse('Invalid attachment key', 400, null, event);
     }
 
     // Generate presigned URL for download
@@ -267,11 +267,11 @@ export const getDownloadUrl = async (event) => {
       downloadUrl,
       filename,
       expiresIn: 3600,
-    });
+    }, 200, event);
 
   } catch (error) {
     console.error('Error generating download URL:', error);
-    return errorResponse('Failed to generate download URL', 500, error);
+    return errorResponse('Failed to generate download URL', 500, error, event);
   }
 };
 
@@ -285,12 +285,12 @@ export const deleteAttachment = async (event) => {
     const key = decodeURIComponent(event.pathParameters?.key || '');
 
     if (!key) {
-      return validationErrorResponse(['Attachment key is required']);
+      return validationErrorResponse(['Attachment key is required'], event);
     }
 
     // Verify the key is for email attachments
     if (!key.startsWith('emails/attachments/')) {
-      return errorResponse('Invalid attachment key', 400);
+      return errorResponse('Invalid attachment key', 400, null, event);
     }
 
     // Delete from S3
@@ -304,11 +304,11 @@ export const deleteAttachment = async (event) => {
     return successResponse({
       message: 'Attachment deleted successfully',
       key,
-    });
+    }, 200, event);
 
   } catch (error) {
     console.error('Error deleting attachment:', error);
-    return errorResponse('Failed to delete attachment', 500, error);
+    return errorResponse('Failed to delete attachment', 500, error, event);
   }
 };
 
