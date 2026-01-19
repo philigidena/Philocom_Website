@@ -137,25 +137,36 @@ const sendViaResend = async (emailData, senderEmail, senderName) => {
   const apiKey = await getResendApiKey();
   const htmlContent = createEmailTemplate(emailData.body, emailData.subject, senderName);
 
+  const payload = {
+    from: `${senderName} - Philocom <${senderEmail}>`,
+    to: emailData.to,
+    cc: emailData.cc || [],
+    subject: emailData.subject,
+    html: htmlContent,
+    text: emailData.bodyText || stripHtml(emailData.body),
+    reply_to: senderEmail,
+    headers: emailData.inReplyTo ? {
+      'In-Reply-To': emailData.inReplyTo,
+      'References': emailData.inReplyTo,
+    } : undefined,
+  };
+
+  // Add attachments if provided
+  if (emailData.attachments && emailData.attachments.length > 0) {
+    payload.attachments = emailData.attachments.map(att => ({
+      filename: att.filename,
+      content: att.content,
+      content_type: att.contentType,
+    }));
+  }
+
   const response = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      from: `${senderName} - Philocom <${senderEmail}>`,
-      to: emailData.to,
-      cc: emailData.cc || [],
-      subject: emailData.subject,
-      html: htmlContent,
-      text: emailData.bodyText || stripHtml(emailData.body),
-      reply_to: senderEmail,
-      headers: emailData.inReplyTo ? {
-        'In-Reply-To': emailData.inReplyTo,
-        'References': emailData.inReplyTo,
-      } : undefined,
-    }),
+    body: JSON.stringify(payload),
   });
 
   if (!response.ok) {
