@@ -17,6 +17,8 @@ import {
   AlertCircle,
   Mail,
   PenSquare,
+  Paperclip,
+  Download,
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import EmployeeLayout from '../components/EmployeeLayout';
@@ -295,9 +297,17 @@ export default function EmailInbox() {
                           {email.bodyText?.substring(0, 100) || ''}
                         </p>
                       </div>
-                      {email.isStarred && (
-                        <Star className="w-4 h-4 text-yellow-400 fill-current flex-shrink-0" />
-                      )}
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        {email.attachments && email.attachments.length > 0 && (
+                          <div className="flex items-center gap-1 text-gray-400">
+                            <Paperclip className="w-3.5 h-3.5" />
+                            <span className="text-xs">{email.attachments.length}</span>
+                          </div>
+                        )}
+                        {email.isStarred && (
+                          <Star className="w-4 h-4 text-yellow-400 fill-current" />
+                        )}
+                      </div>
                     </div>
                   </button>
                 ))
@@ -378,6 +388,42 @@ export default function EmailInbox() {
                       __html: selectedEmail.body || selectedEmail.bodyText || '',
                     }}
                   />
+
+                  {/* Attachments */}
+                  {selectedEmail.attachments && selectedEmail.attachments.length > 0 && (
+                    <div className="mt-6 pt-6 border-t border-gray-800">
+                      <h3 className="text-sm font-medium text-white mb-3 flex items-center gap-2">
+                        <Paperclip className="w-4 h-4" />
+                        Attachments ({selectedEmail.attachments.length})
+                      </h3>
+                      <div className="space-y-2">
+                        {selectedEmail.attachments.map((attachment, index) => (
+                          <a
+                            key={index}
+                            href={attachment.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-between p-3 bg-gray-800 border border-gray-700 rounded-lg hover:border-green-500 transition-colors group"
+                          >
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className="w-10 h-10 bg-gray-700 rounded-lg flex items-center justify-center flex-shrink-0">
+                                <Paperclip className="w-5 h-5 text-gray-400" />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-sm font-medium text-white truncate">
+                                  {attachment.filename}
+                                </p>
+                                <p className="text-xs text-gray-400">
+                                  {(attachment.size / 1024).toFixed(1)} KB
+                                </p>
+                              </div>
+                            </div>
+                            <Download className="w-4 h-4 text-gray-400 group-hover:text-green-400 flex-shrink-0 ml-2" />
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </>
             ) : (
