@@ -736,6 +736,7 @@ resource "aws_lambda_function" "admin_send_email" {
       RESEND_API_KEY_PARAM = var.resend_api_key_param
       SENDER_EMAIL         = "support@philocom.co"
       CORS_ORIGIN          = var.frontend_url
+      IMAGES_BUCKET_NAME   = var.images_bucket_name
     }
   }
 
@@ -765,6 +766,7 @@ resource "aws_lambda_function" "webhook_email" {
       EMPLOYEES_TABLE      = var.employees_table_name
       WEBHOOK_SECRET_PARAM = "/philocom/webhook-secret"
       RESEND_API_KEY_PARAM = var.resend_api_key_param
+      IMAGES_BUCKET_NAME   = var.images_bucket_name
     }
   }
 
@@ -2538,6 +2540,7 @@ resource "aws_lambda_function" "employee_send_email" {
       EMAIL_CONTACTS_TABLE = var.email_contacts_table_name
       RESEND_API_KEY_PARAM = var.resend_api_key_param
       CORS_ORIGIN          = var.frontend_url
+      IMAGES_BUCKET_NAME   = var.images_bucket_name
     }
   }
 
