@@ -22,6 +22,9 @@ import {
   AlertCircle,
   Mail,
   PenSquare,
+  Paperclip,
+  Download,
+  FileText,
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import AdminLayout from '../components/AdminLayout';
@@ -146,6 +149,14 @@ export default function EmailInbox() {
     } else {
       return format(date, 'MMM d');
     }
+  };
+
+  const formatFileSize = (bytes) => {
+    if (!bytes || bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
   };
 
   return (
@@ -293,6 +304,14 @@ export default function EmailInbox() {
                         <p className="text-xs text-gray-500 truncate mt-1">
                           {email.bodyText?.substring(0, 100) || ''}
                         </p>
+                        {email.attachments && email.attachments.length > 0 && (
+                          <div className="flex items-center gap-1 mt-1">
+                            <Paperclip className="w-3 h-3 text-gray-500" />
+                            <span className="text-xs text-gray-500">
+                              {email.attachments.length}
+                            </span>
+                          </div>
+                        )}
                       </div>
                       {email.isStarred && (
                         <Star className="w-4 h-4 text-yellow-400 fill-current flex-shrink-0" />
@@ -384,6 +403,43 @@ export default function EmailInbox() {
                       __html: selectedEmail.body || selectedEmail.bodyText || '',
                     }}
                   />
+
+                  {/* Attachments */}
+                  {selectedEmail.attachments && selectedEmail.attachments.length > 0 && (
+                    <div className="mt-6 pt-6 border-t border-gray-800">
+                      <div className="flex items-center gap-2 mb-4">
+                        <Paperclip className="w-4 h-4 text-gray-400" />
+                        <span className="text-sm text-gray-400">
+                          {selectedEmail.attachments.length} attachment{selectedEmail.attachments.length > 1 ? 's' : ''}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {selectedEmail.attachments.map((attachment) => (
+                          <a
+                            key={attachment.id}
+                            href={attachment.url}
+                            download={attachment.filename}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-3 p-3 bg-gray-800/50 hover:bg-gray-800 rounded-lg border border-gray-800 hover:border-gray-700 transition-colors group"
+                          >
+                            <div className="w-10 h-10 bg-cyan-500/10 rounded flex items-center justify-center flex-shrink-0">
+                              <FileText className="w-5 h-5 text-cyan-400" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm text-white truncate group-hover:text-cyan-400 transition-colors">
+                                {attachment.filename}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                {formatFileSize(attachment.size)}
+                              </p>
+                            </div>
+                            <Download className="w-4 h-4 text-gray-400 group-hover:text-cyan-400 transition-colors flex-shrink-0" />
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </>
             ) : (

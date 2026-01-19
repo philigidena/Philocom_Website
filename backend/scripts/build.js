@@ -22,6 +22,8 @@ const buildLambdaFunctions = async () => {
     'handlers/testimonials',
     'handlers/blog',
     'handlers/admin/emails',
+    'handlers/admin/emailAttachments',
+    'handlers/admin/images',
     'handlers/webhook/email',
     'handlers/admin/projects',
     'handlers/admin/blog',

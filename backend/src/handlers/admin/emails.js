@@ -8,6 +8,7 @@ import { SSMClient, GetParameterCommand } from '@aws-sdk/client-ssm';
 import { getItem, putItem, updateItem, queryTable, scanTable } from '../../utils/db.js';
 import { successResponse, errorResponse, validationErrorResponse } from '../../utils/response.js';
 import { sanitizeInput } from '../../utils/validation.js';
+import { fetchAttachmentContent } from './emailAttachments.js';
 
 const EMAILS_TABLE = process.env.EMAILS_TABLE;
 const EMAIL_CONTACTS_TABLE = process.env.EMAIL_CONTACTS_TABLE;
@@ -139,25 +140,37 @@ const sendViaResend = async (emailData) => {
   // Wrap content in professional email template
   const htmlContent = createEmailTemplate(emailData.body, emailData.subject);
 
+  // Prepare payload
+  const payload = {
+    from: `Philocom <${SENDER_EMAIL}>`,
+    to: emailData.to,
+    cc: emailData.cc || [],
+    subject: emailData.subject,
+    html: htmlContent,
+    text: emailData.bodyText || stripHtml(emailData.body),
+    reply_to: SENDER_EMAIL,
+    headers: emailData.inReplyTo ? {
+      'In-Reply-To': emailData.inReplyTo,
+      'References': emailData.inReplyTo,
+    } : undefined,
+  };
+
+  // Add attachments if provided
+  if (emailData.attachments && emailData.attachments.length > 0) {
+    payload.attachments = emailData.attachments.map(att => ({
+      filename: att.filename,
+      content: att.content, // base64 string or buffer
+      content_type: att.contentType,
+    }));
+  }
+
   const response = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      from: `Philocom <${SENDER_EMAIL}>`,
-      to: emailData.to,
-      cc: emailData.cc || [],
-      subject: emailData.subject,
-      html: htmlContent,
-      text: emailData.bodyText || stripHtml(emailData.body),
-      reply_to: SENDER_EMAIL,
-      headers: emailData.inReplyTo ? {
-        'In-Reply-To': emailData.inReplyTo,
-        'References': emailData.inReplyTo,
-      } : undefined,
-    }),
+    body: JSON.stringify(payload),
   });
 
   if (!response.ok) {
@@ -359,6 +372,44 @@ export const sendEmail = async (event) => {
     // Generate thread ID
     const threadId = generateThreadId(data.subject, data.inReplyTo);
 
+    // Process attachments if provided
+    const attachments = [];
+    const attachmentMetadata = [];
+    if (data.attachments && Array.isArray(data.attachments) && data.attachments.length > 0) {
+      console.log(`Processing ${data.attachments.length} attachments...`);
+
+      for (const att of data.attachments) {
+        try {
+          // Fetch attachment content from S3
+          const attData = await fetchAttachmentContent(att.key);
+
+          // Convert to base64 for Resend API
+          const base64Content = attData.buffer.toString('base64');
+
+          attachments.push({
+            filename: att.filename || attData.filename,
+            content: base64Content,
+            contentType: att.contentType || attData.contentType,
+          });
+
+          // Store metadata for DynamoDB
+          attachmentMetadata.push({
+            id: att.id || uuidv4(),
+            filename: att.filename || attData.filename,
+            contentType: att.contentType || attData.contentType,
+            size: att.size || attData.size,
+            key: att.key,
+            url: att.url || `https://${process.env.IMAGES_BUCKET_NAME}.s3.${process.env.AWS_REGION || 'eu-central-1'}.amazonaws.com/${att.key}`,
+          });
+        } catch (error) {
+          console.error('Error processing attachment:', att.key, error);
+          throw new Error(`Failed to process attachment ${att.filename}: ${error.message}`);
+        }
+      }
+
+      console.log(`Successfully processed ${attachments.length} attachments`);
+    }
+
     // Prepare email data
     const emailData = {
       to: toRecipients,
@@ -367,6 +418,7 @@ export const sendEmail = async (event) => {
       body: data.body, // HTML content
       bodyText: data.bodyText || stripHtml(data.body),
       inReplyTo: data.inReplyTo || null,
+      attachments: attachments.length > 0 ? attachments : undefined,
     };
 
     // Send via Resend
@@ -389,6 +441,7 @@ export const sendEmail = async (event) => {
       isRead: true,
       isStarred: false,
       labels: [],
+      attachments: attachmentMetadata, // Store attachment metadata
       messageId: resendResponse.id,
       inReplyTo: data.inReplyTo || null,
       createdAt: Date.now(),

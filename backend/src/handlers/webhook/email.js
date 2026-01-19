@@ -5,6 +5,7 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import { SSMClient, GetParameterCommand } from '@aws-sdk/client-ssm';
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { createHmac, timingSafeEqual } from 'crypto';
 import { putItem, updateItem, getItem } from '../../utils/db.js';
 import { successResponse, errorResponse } from '../../utils/response.js';
@@ -17,10 +18,13 @@ const EMAIL_CONTACTS_TABLE = process.env.EMAIL_CONTACTS_TABLE;
 const EMPLOYEES_TABLE = process.env.EMPLOYEES_TABLE;
 const WEBHOOK_SECRET_PARAM = process.env.WEBHOOK_SECRET_PARAM || '/philocom/webhook-secret';
 const RESEND_API_KEY_PARAM = process.env.RESEND_API_KEY_PARAM || '/philocom/resend-api-key';
+const BUCKET_NAME = process.env.IMAGES_BUCKET_NAME;
+const REGION = process.env.AWS_REGION || 'eu-central-1';
 
-const ssmClient = new SSMClient({ region: process.env.AWS_REGION || 'eu-central-1' });
-const dynamoClient = new DynamoDBClient({ region: process.env.AWS_REGION || 'eu-central-1' });
+const ssmClient = new SSMClient({ region: REGION });
+const dynamoClient = new DynamoDBClient({ region: REGION });
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
+const s3Client = new S3Client({ region: REGION });
 
 // Cache for Resend API key
 let cachedResendApiKey = null;
@@ -81,6 +85,85 @@ const getResendApiKey = async () => {
 };
 
 /**
+ * Process attachments from Resend email data
+ * Downloads attachment content and uploads to S3
+ */
+const processAttachments = async (attachments, emailId) => {
+  if (!attachments || attachments.length === 0) {
+    return [];
+  }
+
+  const processedAttachments = [];
+
+  for (const att of attachments) {
+    try {
+      // Download attachment content (Resend provides base64 or download URL)
+      let buffer;
+      if (att.content) {
+        // Base64 content provided directly
+        buffer = Buffer.from(att.content, 'base64');
+      } else if (att.url) {
+        // Download from URL
+        const apiKey = await getResendApiKey();
+        const response = await fetch(att.url, {
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+          },
+        });
+        if (!response.ok) {
+          console.error('Failed to download attachment:', att.filename);
+          continue;
+        }
+        const arrayBuffer = await response.arrayBuffer();
+        buffer = Buffer.from(arrayBuffer);
+      } else {
+        console.warn('Attachment has no content or URL:', att.filename);
+        continue;
+      }
+
+      // Generate S3 key
+      const sanitizedFilename = att.filename.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const uniqueId = uuidv4();
+      const key = `emails/attachments/${emailId}/${uniqueId}_${sanitizedFilename}`;
+
+      // Upload to S3
+      const command = new PutObjectCommand({
+        Bucket: BUCKET_NAME,
+        Key: key,
+        Body: buffer,
+        ContentType: att.content_type || att.contentType || 'application/octet-stream',
+        Metadata: {
+          'original-filename': att.filename,
+          'email-id': emailId,
+          'source': 'inbound-webhook',
+        },
+      });
+
+      await s3Client.send(command);
+
+      const url = `https://${BUCKET_NAME}.s3.${REGION}.amazonaws.com/${key}`;
+
+      processedAttachments.push({
+        id: uniqueId,
+        filename: att.filename,
+        contentType: att.content_type || att.contentType || 'application/octet-stream',
+        size: buffer.length,
+        key,
+        url,
+      });
+
+      console.log('Attachment uploaded to S3:', key);
+
+    } catch (error) {
+      console.error('Error processing attachment:', att.filename, error);
+      // Continue with other attachments
+    }
+  }
+
+  return processedAttachments;
+};
+
+/**
  * Fetch full email content from Resend API
  * Webhooks don't include body - must fetch via /emails/receiving/:id endpoint
  */
@@ -112,6 +195,8 @@ const fetchEmailContent = async (emailId) => {
       hasText: !!emailData.text,
       htmlLength: emailData.html?.length || 0,
       textLength: emailData.text?.length || 0,
+      hasAttachments: !!emailData.attachments,
+      attachmentCount: emailData.attachments?.length || 0,
     });
     return emailData;
   } catch (error) {
@@ -529,6 +614,7 @@ export const handleIncoming = async (event) => {
         text: fullEmail?.text || data.data.text || '',
         messageId: emailId || data.data.id,
         headers: data.data.headers || {},
+        attachments: fullEmail?.attachments || [],
       };
       console.log('Parsed email data:', {
         hasHtml: !!emailData.html,
@@ -536,6 +622,7 @@ export const handleIncoming = async (event) => {
         hasText: !!emailData.text,
         textLength: emailData.text?.length || 0,
         fetchedFromApi: !!fullEmail,
+        attachmentCount: emailData.attachments?.length || 0,
       });
     } else {
       // Legacy/direct format
@@ -556,6 +643,14 @@ export const handleIncoming = async (event) => {
       // Use provided parsed data
       parsedEmail.bodyHtml = emailData.html || emailData.body || '';
       parsedEmail.bodyText = emailData.text || emailData.bodyText || '';
+    }
+
+    // Process attachments from Resend
+    let processedAttachments = [];
+    if (emailData.attachments && emailData.attachments.length > 0) {
+      console.log(`Processing ${emailData.attachments.length} attachments...`);
+      processedAttachments = await processAttachments(emailData.attachments, emailData.messageId);
+      console.log(`Successfully processed ${processedAttachments.length} attachments`);
     }
 
     // Parse sender and recipients
@@ -587,7 +682,7 @@ export const handleIncoming = async (event) => {
       subject: subject,
       body: parsedEmail.bodyHtml || `<pre>${parsedEmail.bodyText}</pre>`,
       bodyText: parsedEmail.bodyText,
-      attachments: parsedEmail.attachments,
+      attachments: processedAttachments, // Use processed attachments from S3
       status: 'received',
       isRead: false,
       isStarred: false,

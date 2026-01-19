@@ -87,6 +87,36 @@ resource "aws_iam_role_policy_attachment" "lambda_ses" {
   policy_arn = aws_iam_policy.ses_access.arn
 }
 
+# IAM Policy for S3 Access (Image uploads)
+resource "aws_iam_policy" "s3_access" {
+  name        = "${var.project_name}-${var.environment}-s3-access"
+  description = "Allow Lambda to access S3 for image uploads"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "s3:PutObject",
+        "s3:GetObject",
+        "s3:DeleteObject",
+        "s3:ListBucket"
+      ]
+      Resource = [
+        var.images_bucket_arn,
+        "${var.images_bucket_arn}/*"
+      ]
+    }]
+  })
+
+  tags = var.common_tags
+}
+
+resource "aws_iam_role_policy_attachment" "lambda_s3" {
+  role       = aws_iam_role.lambda_execution.name
+  policy_arn = aws_iam_policy.s3_access.arn
+}
+
 # Lambda Layer for shared dependencies (AWS SDK, etc.)
 resource "aws_lambda_layer_version" "dependencies" {
   filename            = "${path.module}/lambda_layer.zip"  # You'll create this
@@ -1367,6 +1397,457 @@ module "cors_admin_blog_id" {
 
   api_id          = aws_api_gateway_rest_api.main.id
   api_resource_id = aws_api_gateway_resource.admin_blog_id.id
+  allow_origin    = var.frontend_url
+}
+
+# ============================================
+# ADMIN IMAGES ENDPOINTS
+# ============================================
+
+# API Gateway Resource - /admin/images
+resource "aws_api_gateway_resource" "admin_images" {
+  rest_api_id = aws_api_gateway_rest_api.main.id
+  parent_id   = aws_api_gateway_resource.admin.id
+  path_part   = "images"
+}
+
+# API Gateway Resource - /admin/images/presigned-url
+resource "aws_api_gateway_resource" "admin_images_presigned" {
+  rest_api_id = aws_api_gateway_rest_api.main.id
+  parent_id   = aws_api_gateway_resource.admin_images.id
+  path_part   = "presigned-url"
+}
+
+# API Gateway Resource - /admin/images/upload
+resource "aws_api_gateway_resource" "admin_images_upload" {
+  rest_api_id = aws_api_gateway_rest_api.main.id
+  parent_id   = aws_api_gateway_resource.admin_images.id
+  path_part   = "upload"
+}
+
+# API Gateway Resource - /admin/images/{key}
+resource "aws_api_gateway_resource" "admin_images_key" {
+  rest_api_id = aws_api_gateway_rest_api.main.id
+  parent_id   = aws_api_gateway_resource.admin_images.id
+  path_part   = "{key}"
+}
+
+# Lambda Function - Get Presigned URL
+resource "aws_lambda_function" "admin_get_presigned_url" {
+  filename      = "${path.module}/lambda_functions.zip"
+  function_name = "${var.project_name}-${var.environment}-admin-get-presigned-url"
+  role          = aws_iam_role.lambda_execution.arn
+  handler       = "handlers/admin/images.getPresignedUrl"
+  runtime       = "nodejs20.x"
+  timeout       = 30
+  memory_size   = 256
+
+  environment {
+    variables = {
+      IMAGES_BUCKET_NAME = var.images_bucket_name
+      CORS_ORIGIN        = var.frontend_url
+    }
+  }
+
+  source_code_hash = filebase64sha256("${path.module}/lambda_functions.zip")
+  layers           = [aws_lambda_layer_version.dependencies.arn]
+  tags             = var.common_tags
+}
+
+resource "aws_lambda_permission" "admin_get_presigned_url" {
+  statement_id  = "AllowAPIGatewayInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.admin_get_presigned_url.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.main.execution_arn}/*/*"
+}
+
+# POST /admin/images/presigned-url
+resource "aws_api_gateway_method" "post_admin_presigned_url" {
+  rest_api_id   = aws_api_gateway_rest_api.main.id
+  resource_id   = aws_api_gateway_resource.admin_images_presigned.id
+  http_method   = "POST"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "post_admin_presigned_url" {
+  rest_api_id             = aws_api_gateway_rest_api.main.id
+  resource_id             = aws_api_gateway_resource.admin_images_presigned.id
+  http_method             = aws_api_gateway_method.post_admin_presigned_url.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = aws_lambda_function.admin_get_presigned_url.invoke_arn
+}
+
+# Lambda Function - Upload Image
+resource "aws_lambda_function" "admin_upload_image" {
+  filename      = "${path.module}/lambda_functions.zip"
+  function_name = "${var.project_name}-${var.environment}-admin-upload-image"
+  role          = aws_iam_role.lambda_execution.arn
+  handler       = "handlers/admin/images.uploadImage"
+  runtime       = "nodejs20.x"
+  timeout       = 30
+  memory_size   = 256
+
+  environment {
+    variables = {
+      IMAGES_BUCKET_NAME = var.images_bucket_name
+      CORS_ORIGIN        = var.frontend_url
+    }
+  }
+
+  source_code_hash = filebase64sha256("${path.module}/lambda_functions.zip")
+  layers           = [aws_lambda_layer_version.dependencies.arn]
+  tags             = var.common_tags
+}
+
+resource "aws_lambda_permission" "admin_upload_image" {
+  statement_id  = "AllowAPIGatewayInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.admin_upload_image.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.main.execution_arn}/*/*"
+}
+
+# POST /admin/images/upload
+resource "aws_api_gateway_method" "post_admin_upload_image" {
+  rest_api_id   = aws_api_gateway_rest_api.main.id
+  resource_id   = aws_api_gateway_resource.admin_images_upload.id
+  http_method   = "POST"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "post_admin_upload_image" {
+  rest_api_id             = aws_api_gateway_rest_api.main.id
+  resource_id             = aws_api_gateway_resource.admin_images_upload.id
+  http_method             = aws_api_gateway_method.post_admin_upload_image.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = aws_lambda_function.admin_upload_image.invoke_arn
+}
+
+# Lambda Function - Delete Image
+resource "aws_lambda_function" "admin_delete_image" {
+  filename      = "${path.module}/lambda_functions.zip"
+  function_name = "${var.project_name}-${var.environment}-admin-delete-image"
+  role          = aws_iam_role.lambda_execution.arn
+  handler       = "handlers/admin/images.deleteImage"
+  runtime       = "nodejs20.x"
+  timeout       = 30
+  memory_size   = 256
+
+  environment {
+    variables = {
+      IMAGES_BUCKET_NAME = var.images_bucket_name
+      CORS_ORIGIN        = var.frontend_url
+    }
+  }
+
+  source_code_hash = filebase64sha256("${path.module}/lambda_functions.zip")
+  layers           = [aws_lambda_layer_version.dependencies.arn]
+  tags             = var.common_tags
+}
+
+resource "aws_lambda_permission" "admin_delete_image" {
+  statement_id  = "AllowAPIGatewayInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.admin_delete_image.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.main.execution_arn}/*/*"
+}
+
+# DELETE /admin/images/{key}
+resource "aws_api_gateway_method" "delete_admin_image" {
+  rest_api_id   = aws_api_gateway_rest_api.main.id
+  resource_id   = aws_api_gateway_resource.admin_images_key.id
+  http_method   = "DELETE"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "delete_admin_image" {
+  rest_api_id             = aws_api_gateway_rest_api.main.id
+  resource_id             = aws_api_gateway_resource.admin_images_key.id
+  http_method             = aws_api_gateway_method.delete_admin_image.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = aws_lambda_function.admin_delete_image.invoke_arn
+}
+
+# CORS for admin images
+module "cors_admin_images" {
+  source = "./cors"
+
+  api_id          = aws_api_gateway_rest_api.main.id
+  api_resource_id = aws_api_gateway_resource.admin_images.id
+  allow_origin    = var.frontend_url
+}
+
+module "cors_admin_images_presigned" {
+  source = "./cors"
+
+  api_id          = aws_api_gateway_rest_api.main.id
+  api_resource_id = aws_api_gateway_resource.admin_images_presigned.id
+  allow_origin    = var.frontend_url
+}
+
+module "cors_admin_images_upload" {
+  source = "./cors"
+
+  api_id          = aws_api_gateway_rest_api.main.id
+  api_resource_id = aws_api_gateway_resource.admin_images_upload.id
+  allow_origin    = var.frontend_url
+}
+
+module "cors_admin_images_key" {
+  source = "./cors"
+
+  api_id          = aws_api_gateway_rest_api.main.id
+  api_resource_id = aws_api_gateway_resource.admin_images_key.id
+  allow_origin    = var.frontend_url
+}
+
+# ============================================
+# ADMIN EMAIL ATTACHMENTS ENDPOINTS
+# ============================================
+
+# API Gateway Resource - /admin/email-attachments
+resource "aws_api_gateway_resource" "admin_email_attachments" {
+  rest_api_id = aws_api_gateway_rest_api.main.id
+  parent_id   = aws_api_gateway_resource.admin.id
+  path_part   = "email-attachments"
+}
+
+# API Gateway Resource - /admin/email-attachments/presigned-url
+resource "aws_api_gateway_resource" "admin_email_attachments_presigned" {
+  rest_api_id = aws_api_gateway_rest_api.main.id
+  parent_id   = aws_api_gateway_resource.admin_email_attachments.id
+  path_part   = "presigned-url"
+}
+
+# API Gateway Resource - /admin/email-attachments/upload
+resource "aws_api_gateway_resource" "admin_email_attachments_upload" {
+  rest_api_id = aws_api_gateway_rest_api.main.id
+  parent_id   = aws_api_gateway_resource.admin_email_attachments.id
+  path_part   = "upload"
+}
+
+# API Gateway Resource - /admin/email-attachments/{key}
+resource "aws_api_gateway_resource" "admin_email_attachments_key" {
+  rest_api_id = aws_api_gateway_rest_api.main.id
+  parent_id   = aws_api_gateway_resource.admin_email_attachments.id
+  path_part   = "{key}"
+}
+
+# Lambda Function - Get Email Attachment Presigned URL
+resource "aws_lambda_function" "admin_get_email_attachment_presigned_url" {
+  filename      = "${path.module}/lambda_functions.zip"
+  function_name = "${var.project_name}-${var.environment}-admin-get-email-attachment-presigned-url"
+  role          = aws_iam_role.lambda_execution.arn
+  handler       = "handlers/admin/emailAttachments.getPresignedUrl"
+  runtime       = "nodejs20.x"
+  timeout       = 30
+  memory_size   = 256
+
+  environment {
+    variables = {
+      IMAGES_BUCKET_NAME = var.images_bucket_name
+      
+    }
+  }
+
+  tags = var.common_tags
+}
+
+resource "aws_lambda_permission" "api_gateway_invoke_email_attachment_presigned" {
+  statement_id  = "AllowAPIGatewayInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.admin_get_email_attachment_presigned_url.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.main.execution_arn}/*/*"
+}
+
+# POST /admin/email-attachments/presigned-url
+resource "aws_api_gateway_method" "post_admin_email_attachment_presigned_url" {
+  rest_api_id   = aws_api_gateway_rest_api.main.id
+  resource_id   = aws_api_gateway_resource.admin_email_attachments_presigned.id
+  http_method   = "POST"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "post_admin_email_attachment_presigned_url" {
+  rest_api_id             = aws_api_gateway_rest_api.main.id
+  resource_id             = aws_api_gateway_resource.admin_email_attachments_presigned.id
+  http_method             = aws_api_gateway_method.post_admin_email_attachment_presigned_url.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = aws_lambda_function.admin_get_email_attachment_presigned_url.invoke_arn
+}
+
+# Lambda Function - Upload Email Attachment
+resource "aws_lambda_function" "admin_upload_email_attachment" {
+  filename      = "${path.module}/lambda_functions.zip"
+  function_name = "${var.project_name}-${var.environment}-admin-upload-email-attachment"
+  role          = aws_iam_role.lambda_execution.arn
+  handler       = "handlers/admin/emailAttachments.uploadAttachment"
+  runtime       = "nodejs20.x"
+  timeout       = 30
+  memory_size   = 256
+
+  environment {
+    variables = {
+      IMAGES_BUCKET_NAME = var.images_bucket_name
+      
+    }
+  }
+
+  tags = var.common_tags
+}
+
+resource "aws_lambda_permission" "api_gateway_invoke_upload_email_attachment" {
+  statement_id  = "AllowAPIGatewayInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.admin_upload_email_attachment.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.main.execution_arn}/*/*"
+}
+
+# POST /admin/email-attachments/upload
+resource "aws_api_gateway_method" "post_admin_upload_email_attachment" {
+  rest_api_id   = aws_api_gateway_rest_api.main.id
+  resource_id   = aws_api_gateway_resource.admin_email_attachments_upload.id
+  http_method   = "POST"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "post_admin_upload_email_attachment" {
+  rest_api_id             = aws_api_gateway_rest_api.main.id
+  resource_id             = aws_api_gateway_resource.admin_email_attachments_upload.id
+  http_method             = aws_api_gateway_method.post_admin_upload_email_attachment.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = aws_lambda_function.admin_upload_email_attachment.invoke_arn
+}
+
+# Lambda Function - Get Email Attachment Download URL
+resource "aws_lambda_function" "admin_get_email_attachment_download_url" {
+  filename      = "${path.module}/lambda_functions.zip"
+  function_name = "${var.project_name}-${var.environment}-admin-get-email-attachment-download-url"
+  role          = aws_iam_role.lambda_execution.arn
+  handler       = "handlers/admin/emailAttachments.getDownloadUrl"
+  runtime       = "nodejs20.x"
+  timeout       = 30
+  memory_size   = 256
+
+  environment {
+    variables = {
+      IMAGES_BUCKET_NAME = var.images_bucket_name
+      
+    }
+  }
+
+  tags = var.common_tags
+}
+
+resource "aws_lambda_permission" "api_gateway_invoke_email_attachment_download_url" {
+  statement_id  = "AllowAPIGatewayInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.admin_get_email_attachment_download_url.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.main.execution_arn}/*/*"
+}
+
+# GET /admin/email-attachments/{key}
+resource "aws_api_gateway_method" "get_admin_email_attachment_download_url" {
+  rest_api_id   = aws_api_gateway_rest_api.main.id
+  resource_id   = aws_api_gateway_resource.admin_email_attachments_key.id
+  http_method   = "GET"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "get_admin_email_attachment_download_url" {
+  rest_api_id             = aws_api_gateway_rest_api.main.id
+  resource_id             = aws_api_gateway_resource.admin_email_attachments_key.id
+  http_method             = aws_api_gateway_method.get_admin_email_attachment_download_url.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = aws_lambda_function.admin_get_email_attachment_download_url.invoke_arn
+}
+
+# Lambda Function - Delete Email Attachment
+resource "aws_lambda_function" "admin_delete_email_attachment" {
+  filename      = "${path.module}/lambda_functions.zip"
+  function_name = "${var.project_name}-${var.environment}-admin-delete-email-attachment"
+  role          = aws_iam_role.lambda_execution.arn
+  handler       = "handlers/admin/emailAttachments.deleteAttachment"
+  runtime       = "nodejs20.x"
+  timeout       = 30
+  memory_size   = 256
+
+  environment {
+    variables = {
+      IMAGES_BUCKET_NAME = var.images_bucket_name
+      
+    }
+  }
+
+  tags = var.common_tags
+}
+
+resource "aws_lambda_permission" "api_gateway_invoke_delete_email_attachment" {
+  statement_id  = "AllowAPIGatewayInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.admin_delete_email_attachment.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.main.execution_arn}/*/*"
+}
+
+# DELETE /admin/email-attachments/{key}
+resource "aws_api_gateway_method" "delete_admin_email_attachment" {
+  rest_api_id   = aws_api_gateway_rest_api.main.id
+  resource_id   = aws_api_gateway_resource.admin_email_attachments_key.id
+  http_method   = "DELETE"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "delete_admin_email_attachment" {
+  rest_api_id             = aws_api_gateway_rest_api.main.id
+  resource_id             = aws_api_gateway_resource.admin_email_attachments_key.id
+  http_method             = aws_api_gateway_method.delete_admin_email_attachment.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = aws_lambda_function.admin_delete_email_attachment.invoke_arn
+}
+
+# CORS for admin email attachments
+module "cors_admin_email_attachments" {
+  source = "./cors"
+
+  api_id          = aws_api_gateway_rest_api.main.id
+  api_resource_id = aws_api_gateway_resource.admin_email_attachments.id
+  allow_origin    = var.frontend_url
+}
+
+module "cors_admin_email_attachments_presigned" {
+  source = "./cors"
+
+  api_id          = aws_api_gateway_rest_api.main.id
+  api_resource_id = aws_api_gateway_resource.admin_email_attachments_presigned.id
+  allow_origin    = var.frontend_url
+}
+
+module "cors_admin_email_attachments_upload" {
+  source = "./cors"
+
+  api_id          = aws_api_gateway_rest_api.main.id
+  api_resource_id = aws_api_gateway_resource.admin_email_attachments_upload.id
+  allow_origin    = var.frontend_url
+}
+
+module "cors_admin_email_attachments_key" {
+  source = "./cors"
+
+  api_id          = aws_api_gateway_rest_api.main.id
+  api_resource_id = aws_api_gateway_resource.admin_email_attachments_key.id
   allow_origin    = var.frontend_url
 }
 
