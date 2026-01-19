@@ -40,6 +40,8 @@ export default function EmailInbox() {
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [emailToDelete, setEmailToDelete] = useState(null);
 
   const { getIdToken, employee } = useEmployeeAuth();
   const navigate = useNavigate();
@@ -130,10 +132,13 @@ export default function EmailInbox() {
     navigate('/employee/email');
   };
 
-  const handleDelete = async (email) => {
-    if (!window.confirm(`Are you sure you want to delete this email?`)) {
-      return;
-    }
+  const handleDeleteClick = (email) => {
+    setEmailToDelete(email);
+    setShowDeleteModal(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!emailToDelete) return;
 
     setIsDeleting(true);
     try {
@@ -148,7 +153,7 @@ export default function EmailInbox() {
         headers['X-Employee-Email'] = employee.email;
       }
 
-      const response = await fetch(`${API_URL}/employee/emails/${email.id}`, {
+      const response = await fetch(`${API_URL}/employee/emails/${emailToDelete.id}`, {
         method: 'DELETE',
         headers,
       });
@@ -157,16 +162,25 @@ export default function EmailInbox() {
         throw new Error('Failed to delete email');
       }
 
-      // Remove from list and navigate back
-      setEmails(emails.filter((e) => e.id !== email.id));
+      // Close modal and navigate back
+      setShowDeleteModal(false);
+      setEmailToDelete(null);
       navigate('/employee/email');
       setSelectedEmail(null);
+
+      // Refresh the email list to reflect deletion
+      await fetchEmails();
     } catch (err) {
       console.error('Error deleting email:', err);
       setError(err.message);
     } finally {
       setIsDeleting(false);
     }
+  };
+
+  const handleDeleteCancel = () => {
+    setShowDeleteModal(false);
+    setEmailToDelete(null);
   };
 
   const filteredEmails = emails.filter((email) => {
@@ -390,15 +404,11 @@ export default function EmailInbox() {
                       </button>
                     )}
                     <button
-                      onClick={() => handleDelete(selectedEmail)}
+                      onClick={() => handleDeleteClick(selectedEmail)}
                       disabled={isDeleting}
                       className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-300 hover:text-red-400 hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50"
                     >
-                      {isDeleting ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <Trash2 className="w-4 h-4" />
-                      )}
+                      <Trash2 className="w-4 h-4" />
                       Delete
                     </button>
                   </div>
@@ -490,6 +500,64 @@ export default function EmailInbox() {
           </div>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-900 border border-gray-800 rounded-xl max-w-md w-full p-6 shadow-2xl">
+            <div className="flex items-start gap-4 mb-4">
+              <div className="w-12 h-12 bg-red-500/10 rounded-full flex items-center justify-center flex-shrink-0">
+                <Trash2 className="w-6 h-6 text-red-400" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-white mb-2">
+                  Delete Email
+                </h3>
+                <p className="text-sm text-gray-400">
+                  Are you sure you want to delete this email? This action cannot be undone.
+                </p>
+              </div>
+            </div>
+
+            {emailToDelete && (
+              <div className="bg-gray-800/50 rounded-lg p-3 mb-6">
+                <p className="text-sm font-medium text-white truncate">
+                  {emailToDelete.subject || '(No subject)'}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  {emailToDelete.direction === 'inbound'
+                    ? `From: ${emailToDelete.from?.email}`
+                    : `To: ${emailToDelete.to?.[0]?.email}`}
+                </p>
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                onClick={handleDeleteCancel}
+                disabled={isDeleting}
+                className="flex-1 px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteConfirm}
+                disabled={isDeleting}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  'Delete'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </EmployeeLayout>
   );
 }
