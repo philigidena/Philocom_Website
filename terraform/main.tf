@@ -59,6 +59,10 @@ module "api" {
   employees_table_name = module.database.employees_table_name
   employees_table_arn  = module.database.employees_table_arn
 
+  # S3 storage for images
+  images_bucket_name = module.storage.images_bucket_name
+  images_bucket_arn  = module.storage.images_bucket_arn
+
   # Cognito for admin auth
   cognito_user_pool_arn = module.auth.user_pool_arn
   cognito_user_pool_id  = module.auth.user_pool_id

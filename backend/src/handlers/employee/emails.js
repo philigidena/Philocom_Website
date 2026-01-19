@@ -238,10 +238,24 @@ export const getEmails = async (event) => {
       Limit: limit,
     };
 
+    // Add filters
+    const filterExpressions = [];
+
+    // Filter out deleted emails
+    filterExpressions.push('(attribute_not_exists(#status) OR #status <> :deleted)');
+    params.ExpressionAttributeNames = {
+      '#status': 'status',
+    };
+    params.ExpressionAttributeValues[':deleted'] = 'deleted';
+
     // Add direction filter if specified
     if (direction) {
-      params.FilterExpression = 'direction = :direction';
+      filterExpressions.push('direction = :direction');
       params.ExpressionAttributeValues[':direction'] = direction;
+    }
+
+    if (filterExpressions.length > 0) {
+      params.FilterExpression = filterExpressions.join(' AND ');
     }
 
     const command = new QueryCommand(params);
@@ -620,5 +634,53 @@ export const updateEmail = async (event) => {
   } catch (error) {
     console.error('Error updating employee email:', error);
     return errorResponse('Failed to update email', 500, error);
+  }
+};
+
+/**
+ * DELETE /employee/emails/{id} - Delete email (soft delete)
+ */
+export const deleteEmail = async (event) => {
+  try {
+    // Validate employee access
+    const accessCheck = validateEmployeeAccess(event);
+    if (!accessCheck.isValid) {
+      return errorResponse(accessCheck.error, 403, null, event);
+    }
+
+    const employee = await getEmployeeFromEvent(event);
+    if (!employee || !employee.email) {
+      return errorResponse('Employee not found', 403, null, event);
+    }
+
+    const emailId = event.pathParameters?.id;
+    if (!emailId) {
+      return validationErrorResponse(['Email ID is required'], event);
+    }
+
+    // Get email and verify ownership
+    const email = await getItem(EMAILS_TABLE, { id: emailId });
+    if (!email) {
+      return errorResponse('Email not found', 404, null, event);
+    }
+
+    if (!verifyEmailOwnership(email, employee.email)) {
+      return errorResponse('You do not have access to this email', 403, null, event);
+    }
+
+    // Soft delete - update status to 'deleted'
+    const updatedEmail = await updateItem(EMAILS_TABLE, { id: emailId }, {
+      status: 'deleted',
+      updatedAt: Date.now(),
+    });
+
+    return successResponse({
+      message: 'Email deleted successfully',
+      email: updatedEmail,
+    }, 200, event);
+
+  } catch (error) {
+    console.error('Error deleting employee email:', error);
+    return errorResponse('Failed to delete email', 500, error, event);
   }
 };

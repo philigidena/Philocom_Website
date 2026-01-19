@@ -115,9 +115,7 @@ export const createEmployee = async (event) => {
     if (!data.name) {
       errors.push('Name is required');
     }
-    if (!data.email) {
-      errors.push('Email is required');
-    }
+    // Personal email is optional
     if (!data.assignedEmail) {
       errors.push('Assigned company email is required');
     }

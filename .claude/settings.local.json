@@ -16,7 +16,17 @@
       "Bash(aws lambda update-function-code:*)",
       "Bash(done)",
       "Bash(aws dynamodb list-tables:*)",
-      "Bash(aws dynamodb describe-table:*)"
+      "Bash(aws dynamodb describe-table:*)",
+      "Bash(MSYS_NO_PATHCONV=1 aws dynamodb scan:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(powershell -Command \"aws logs describe-log-groups --log-group-name-prefix ''/aws/lambda/philocom'' --query ''logGroups[*].logGroupName'' --output text\")",
+      "Bash(powershell -Command \"aws logs tail ''/aws/lambda/philocom-dev-admin-create-employee'' --since 15m --format short\")",
+      "Bash(powershell:*)",
+      "Bash(node:*)",
+      "Bash(terraform plan:*)",
+      "Bash(aws apigateway create-deployment:*)"
     ]
   }
 }

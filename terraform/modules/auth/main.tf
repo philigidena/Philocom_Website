@@ -67,6 +67,18 @@ resource "aws_cognito_user_pool" "admin" {
     }
   }
 
+  # Custom attribute for employee's personal email (backup contact)
+  schema {
+    name                     = "personal_email"
+    attribute_data_type      = "String"
+    required                 = false
+    mutable                  = true
+    string_attribute_constraints {
+      min_length = 0
+      max_length = 256
+    }
+  }
+
   # MFA configuration (optional - off for simplicity)
   mfa_configuration = "OFF"
 

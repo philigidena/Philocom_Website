@@ -19,6 +19,7 @@ import {
   PenSquare,
   Paperclip,
   Download,
+  Trash2,
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import EmployeeLayout from '../components/EmployeeLayout';
@@ -38,6 +39,7 @@ export default function EmailInbox() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const { getIdToken, employee } = useEmployeeAuth();
   const navigate = useNavigate();
@@ -126,6 +128,45 @@ export default function EmailInbox() {
 
   const handleBack = () => {
     navigate('/employee/email');
+  };
+
+  const handleDelete = async (email) => {
+    if (!window.confirm(`Are you sure you want to delete this email?`)) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      const token = await getIdToken();
+      const headers = {
+        'Content-Type': 'application/json',
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      if (employee?.email) {
+        headers['X-Employee-Email'] = employee.email;
+      }
+
+      const response = await fetch(`${API_URL}/employee/emails/${email.id}`, {
+        method: 'DELETE',
+        headers,
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete email');
+      }
+
+      // Remove from list and navigate back
+      setEmails(emails.filter((e) => e.id !== email.id));
+      navigate('/employee/email');
+      setSelectedEmail(null);
+    } catch (err) {
+      console.error('Error deleting email:', err);
+      setError(err.message);
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const filteredEmails = emails.filter((email) => {
@@ -348,6 +389,18 @@ export default function EmailInbox() {
                         Reply
                       </button>
                     )}
+                    <button
+                      onClick={() => handleDelete(selectedEmail)}
+                      disabled={isDeleting}
+                      className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-300 hover:text-red-400 hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50"
+                    >
+                      {isDeleting ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="w-4 h-4" />
+                      )}
+                      Delete
+                    </button>
                   </div>
                 </div>
 

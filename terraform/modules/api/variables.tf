@@ -136,3 +136,14 @@ variable "employees_table_arn" {
   description = "Employees DynamoDB table ARN"
   type        = string
 }
+
+# S3 Storage
+variable "images_bucket_name" {
+  description = "S3 bucket name for images"
+  type        = string
+}
+
+variable "images_bucket_arn" {
+  description = "S3 bucket ARN for images"
+  type        = string
+}

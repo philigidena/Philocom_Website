@@ -2580,6 +2580,33 @@ resource "aws_lambda_function" "employee_update_email" {
   tags = var.common_tags
 }
 
+# Lambda Function - Employee Delete Email
+resource "aws_lambda_function" "employee_delete_email" {
+  filename      = "${path.module}/lambda_functions.zip"
+  function_name = "${var.project_name}-${var.environment}-employee-delete-email"
+  role          = aws_iam_role.lambda_execution.arn
+  handler       = "handlers/employee/emails.deleteEmail"
+  runtime       = "nodejs20.x"
+  timeout       = 30
+  memory_size   = 256
+
+  environment {
+    variables = {
+      EMAILS_TABLE    = var.emails_table_name
+      EMPLOYEES_TABLE = var.employees_table_name
+      CORS_ORIGIN     = var.frontend_url
+    }
+  }
+
+  layers = [aws_lambda_layer_version.dependencies.arn]
+
+  lifecycle {
+    ignore_changes = [filename]
+  }
+
+  tags = var.common_tags
+}
+
 # Lambda Function - Employee Get Contacts (read-only)
 resource "aws_lambda_function" "employee_get_contacts" {
   filename      = "${path.module}/lambda_functions.zip"
@@ -2766,6 +2793,35 @@ resource "aws_lambda_permission" "api_gateway_employee_update_email" {
   statement_id  = "AllowAPIGatewayInvoke"
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.employee_update_email.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.main.execution_arn}/*/*"
+}
+
+# DELETE /employee/emails/{id}
+resource "aws_api_gateway_method" "delete_employee_email" {
+  rest_api_id   = aws_api_gateway_rest_api.main.id
+  resource_id   = aws_api_gateway_resource.employee_emails_id.id
+  http_method   = "DELETE"
+  authorization = "NONE"
+
+  request_parameters = {
+    "method.request.path.id" = true
+  }
+}
+
+resource "aws_api_gateway_integration" "delete_employee_email" {
+  rest_api_id             = aws_api_gateway_rest_api.main.id
+  resource_id             = aws_api_gateway_resource.employee_emails_id.id
+  http_method             = aws_api_gateway_method.delete_employee_email.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = aws_lambda_function.employee_delete_email.invoke_arn
+}
+
+resource "aws_lambda_permission" "api_gateway_employee_delete_email" {
+  statement_id  = "AllowAPIGatewayInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.employee_delete_email.function_name
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_api_gateway_rest_api.main.execution_arn}/*/*"
 }
