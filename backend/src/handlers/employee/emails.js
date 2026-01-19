@@ -7,6 +7,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { SSMClient, GetParameterCommand } from '@aws-sdk/client-ssm';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, QueryCommand } from '@aws-sdk/lib-dynamodb';
+import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getItem, putItem, updateItem } from '../../utils/db.js';
 import { successResponse, errorResponse, validationErrorResponse } from '../../utils/response.js';
 import { sanitizeInput } from '../../utils/validation.js';
@@ -20,6 +21,7 @@ import {
 const EMAILS_TABLE = process.env.EMAILS_TABLE;
 const EMAIL_CONTACTS_TABLE = process.env.EMAIL_CONTACTS_TABLE;
 const RESEND_API_KEY_PARAM = process.env.RESEND_API_KEY_PARAM;
+const IMAGES_BUCKET_NAME = process.env.IMAGES_BUCKET_NAME;
 const COMPANY_NAME = 'Philocom';
 const COMPANY_WEBSITE = 'https://philocom.co';
 const COMPANY_ADDRESS = 'Addis Ababa, Ethiopia';
@@ -30,6 +32,7 @@ const ADMIN_EMAIL_ADDRESSES = ['info@philocom.co', 'support@philocom.co', 'admin
 const ssmClient = new SSMClient({ region: process.env.AWS_REGION || 'eu-central-1' });
 const dynamoClient = new DynamoDBClient({ region: process.env.AWS_REGION || 'eu-central-1' });
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
+const s3Client = new S3Client({ region: process.env.AWS_REGION || 'eu-central-1' });
 
 /**
  * Professional HTML email template
@@ -313,6 +316,41 @@ export const getEmail = async (event) => {
 };
 
 /**
+ * Fetch attachment content from S3 (for sending via Resend)
+ */
+const fetchAttachmentContent = async (key) => {
+  try {
+    const command = new GetObjectCommand({
+      Bucket: IMAGES_BUCKET_NAME,
+      Key: key,
+    });
+
+    const response = await s3Client.send(command);
+    const buffer = await streamToBuffer(response.Body);
+
+    return {
+      buffer,
+      contentType: response.ContentType,
+      filename: response.Metadata?.['original-filename'] || key.split('/').pop(),
+    };
+  } catch (error) {
+    console.error('Error fetching attachment from S3:', error);
+    throw new Error(`Failed to fetch attachment: ${error.message}`);
+  }
+};
+
+/**
+ * Convert stream to buffer
+ */
+const streamToBuffer = async (stream) => {
+  const chunks = [];
+  for await (const chunk of stream) {
+    chunks.push(chunk);
+  }
+  return Buffer.concat(chunks);
+};
+
+/**
  * POST /employee/emails/send - Send email (from employee's assigned address only)
  */
 export const sendEmail = async (event) => {
@@ -368,6 +406,43 @@ export const sendEmail = async (event) => {
 
     const threadId = generateThreadId(data.subject, data.inReplyTo);
 
+    // Process attachments if provided
+    const attachments = [];
+    const attachmentMetadata = [];
+    if (data.attachments && Array.isArray(data.attachments) && data.attachments.length > 0) {
+      console.log(`Processing ${data.attachments.length} attachments...`);
+
+      for (const att of data.attachments) {
+        try {
+          // Fetch attachment content from S3
+          const attData = await fetchAttachmentContent(att.key);
+
+          // Convert to base64 for Resend API
+          const base64Content = attData.buffer.toString('base64');
+
+          attachments.push({
+            filename: att.filename || attData.filename,
+            content: base64Content,
+            contentType: att.contentType || attData.contentType,
+          });
+
+          attachmentMetadata.push({
+            id: uuidv4(),
+            filename: att.filename || attData.filename,
+            contentType: att.contentType || attData.contentType,
+            size: att.size || attData.buffer.length,
+            key: att.key,
+            url: `https://${IMAGES_BUCKET_NAME}.s3.${process.env.AWS_REGION || 'eu-central-1'}.amazonaws.com/${att.key}`,
+          });
+        } catch (error) {
+          console.error(`Error processing attachment: ${att.key}`, error);
+          throw new Error(`Failed to process attachment ${att.filename}: ${error.message}`);
+        }
+      }
+
+      console.log(`Successfully processed ${attachments.length} attachments`);
+    }
+
     const emailData = {
       to: toRecipients,
       cc: ccRecipients,
@@ -375,6 +450,7 @@ export const sendEmail = async (event) => {
       body: data.body,
       bodyText: data.bodyText || stripHtml(data.body),
       inReplyTo: data.inReplyTo || null,
+      attachments: attachments.length > 0 ? attachments : undefined,
     };
 
     // Send via Resend using employee's assigned email
@@ -400,6 +476,7 @@ export const sendEmail = async (event) => {
       messageId: resendResponse.id,
       inReplyTo: data.inReplyTo || null,
       sentBy: employee.id || employee.email,
+      attachments: attachmentMetadata.length > 0 ? attachmentMetadata : undefined,
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
@@ -435,6 +512,7 @@ export const sendEmail = async (event) => {
         messageId: `internal-${resendResponse.id}`,
         inReplyTo: data.inReplyTo || null,
         sentBy: employee.id || employee.email,
+        attachments: attachmentMetadata.length > 0 ? attachmentMetadata : undefined,
         createdAt: Date.now(),
         updatedAt: Date.now(),
       };
