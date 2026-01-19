@@ -38,6 +38,8 @@ export default function EmailCompose() {
   const [success, setSuccess] = useState(false);
   const [showCc, setShowCc] = useState(false);
   const [replyToEmail, setReplyToEmail] = useState(null);
+  const [attachments, setAttachments] = useState([]);
+  const [uploadingFiles, setUploadingFiles] = useState(false);
 
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -114,6 +116,89 @@ export default function EmailCompose() {
     }
   };
 
+  const handleFileSelect = async (event) => {
+    const files = Array.from(event.target.files || []);
+    if (files.length === 0) return;
+
+    setUploadingFiles(true);
+    setError(null);
+
+    try {
+      const token = await getIdToken();
+      const uploadedAttachments = [];
+
+      for (const file of files) {
+        // Validate file size (10MB per file)
+        if (file.size > 10 * 1024 * 1024) {
+          throw new Error(`File ${file.name} is too large. Maximum size is 10MB.`);
+        }
+
+        // Get presigned URL
+        const presignedResponse = await fetch(`${API_URL}/admin/email-attachments/presigned-url`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            filename: file.name,
+            contentType: file.type,
+            size: file.size,
+          }),
+        });
+
+        if (!presignedResponse.ok) {
+          throw new Error(`Failed to get upload URL for ${file.name}`);
+        }
+
+        const { data } = await presignedResponse.json();
+
+        // Upload file to S3
+        const uploadResponse = await fetch(data.presignedUrl, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': file.type,
+          },
+          body: file,
+        });
+
+        if (!uploadResponse.ok) {
+          throw new Error(`Failed to upload ${file.name}`);
+        }
+
+        uploadedAttachments.push({
+          id: data.metadata.id,
+          filename: data.metadata.filename,
+          contentType: data.metadata.contentType,
+          size: data.metadata.size,
+          key: data.key,
+          url: data.publicUrl,
+        });
+      }
+
+      setAttachments([...attachments, ...uploadedAttachments]);
+    } catch (err) {
+      console.error('Error uploading files:', err);
+      setError(err.message || 'Failed to upload files');
+    } finally {
+      setUploadingFiles(false);
+      // Reset file input
+      event.target.value = '';
+    }
+  };
+
+  const removeAttachment = (id) => {
+    setAttachments(attachments.filter((att) => att.id !== id));
+  };
+
+  const formatFileSize = (bytes) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+  };
+
   const handleSend = async () => {
     if (!to.trim()) {
       setError('Please enter a recipient');
@@ -141,6 +226,12 @@ export default function EmailCompose() {
         body: editor.getHTML(),
         bodyText: editor.getText(),
         inReplyTo: replyToEmail?.messageId || null,
+        attachments: attachments.map((att) => ({
+          filename: att.filename,
+          contentType: att.contentType,
+          size: att.size,
+          key: att.key,
+        })),
       };
 
       const headers = {
@@ -180,7 +271,8 @@ export default function EmailCompose() {
     if (
       editor?.isEmpty &&
       !to &&
-      !subject
+      !subject &&
+      attachments.length === 0
     ) {
       navigate('/employee/email');
       return;
@@ -403,19 +495,77 @@ export default function EmailCompose() {
             >
               <LinkIcon className="w-4 h-4" />
             </button>
-            <button
-              className="p-2 rounded text-gray-400 hover:bg-gray-700 hover:text-white transition-colors"
-              title="Attach File (Coming soon)"
-              disabled
+            <div className="w-px h-6 bg-gray-700 mx-1" />
+            <label
+              className={`p-2 rounded transition-colors cursor-pointer ${
+                uploadingFiles
+                  ? 'text-gray-600 cursor-not-allowed'
+                  : 'text-gray-400 hover:bg-gray-700 hover:text-white'
+              }`}
+              title="Attach File"
             >
-              <Paperclip className="w-4 h-4" />
-            </button>
+              {uploadingFiles ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Paperclip className="w-4 h-4" />
+              )}
+              <input
+                type="file"
+                multiple
+                onChange={handleFileSelect}
+                disabled={uploadingFiles}
+                className="hidden"
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.jpg,.jpeg,.png,.gif,.webp,.zip"
+              />
+            </label>
           </div>
 
           {/* Editor */}
           <div className="min-h-[300px]">
             <EditorContent editor={editor} />
           </div>
+
+          {/* Attachments */}
+          {attachments.length > 0 && (
+            <div className="px-4 py-3 border-t border-gray-800 bg-gray-800/30">
+              <div className="flex items-center gap-2 mb-2">
+                <Paperclip className="w-4 h-4 text-gray-400" />
+                <span className="text-sm text-gray-400">
+                  {attachments.length} attachment{attachments.length > 1 ? 's' : ''} (
+                  {formatFileSize(attachments.reduce((sum, att) => sum + att.size, 0))})
+                </span>
+              </div>
+              <div className="space-y-2">
+                {attachments.map((attachment) => (
+                  <div
+                    key={attachment.id}
+                    className="flex items-center justify-between p-2 bg-gray-900 rounded-lg border border-gray-800"
+                  >
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <div className="w-8 h-8 bg-green-500/10 rounded flex items-center justify-center flex-shrink-0">
+                        <Paperclip className="w-4 h-4 text-green-400" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-white truncate">
+                          {attachment.filename}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {formatFileSize(attachment.size)}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => removeAttachment(attachment.id)}
+                      className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-gray-800 rounded transition-colors"
+                      title="Remove attachment"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Footer */}
           <div className="px-4 py-3 border-t border-gray-800 bg-gray-800/30">
